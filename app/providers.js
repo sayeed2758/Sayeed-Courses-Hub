@@ -7,19 +7,28 @@ import {
   signInWithPopup,
   signOut
 } from "firebase/auth";
-import { auth } from "../lib/firebase";
+import { auth, firebaseConfigured } from "../lib/firebase";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(firebaseConfigured);
+  const [configError, setConfigError] = useState(
+    firebaseConfigured ? "" : "Firebase is not configured yet."
+  );
 
   useEffect(() => {
+    if (!auth) {
+      setAuthLoading(false);
+      return undefined;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (nextUser) => {
       setUser(nextUser);
       setAuthLoading(false);
     });
+
     return unsubscribe;
   }, []);
 
@@ -27,15 +36,19 @@ export function AuthProvider({ children }) {
     () => ({
       user,
       authLoading,
+      configError,
+      firebaseConfigured,
       async signInWithGoogle() {
+        if (!auth) throw new Error("Firebase is not configured yet.");
         const provider = new GoogleAuthProvider();
         return signInWithPopup(auth, provider);
       },
       async logout() {
+        if (!auth) return;
         return signOut(auth);
       }
     }),
-    [user, authLoading]
+    [user, authLoading, configError]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
