@@ -1,5 +1,6 @@
  "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
   ArrowRight,
@@ -13,76 +14,7 @@ import {
   X
 } from "lucide-react";
 
-const categories = ["All", "KVS", "NVS", "CTET", "Teaching", "SSC"];
-
-const courses = [
-  {
-    id: 1,
-    category: "KVS",
-    title: "KVS / NVS INTERVIEW BATCH",
-    badge: "FREE",
-    meta: "Interview Preparation",
-    description: "Premium interview preparation resources, practice and guidance.",
-    tone: "blue",
-    status: "active",
-    featured: true
-  },
-  {
-    id: 2,
-    category: "CTET",
-    title: "CTET COMPLETE PREPARATION",
-    badge: "NEW",
-    meta: "Paper I + II",
-    description: "Structured preparation resources with chapter-wise study support.",
-    tone: "purple",
-    status: "active",
-    featured: true
-  },
-  {
-    id: 3,
-    category: "Teaching",
-    title: "TEACHER'S TOOLKIT",
-    badge: "FREE",
-    meta: "Teaching Resources",
-    description: "Useful classroom resources, worksheets and smart teaching material.",
-    tone: "teal",
-    status: "active",
-    featured: false
-  },
-  {
-    id: 4,
-    category: "SSC",
-    title: "SSC FOUNDATION BATCH",
-    badge: "POPULAR",
-    meta: "Foundation Course",
-    description: "A focused foundation track for systematic exam preparation.",
-    tone: "orange",
-    status: "active",
-    featured: true
-  },
-  {
-    id: 5,
-    category: "NVS",
-    title: "NVS INTERVIEW CRASH COURSE",
-    badge: "NEW",
-    meta: "Interview Preparation",
-    description: "Focused interview-oriented practice for quick revision.",
-    tone: "blue",
-    status: "active",
-    featured: false
-  },
-  {
-    id: 6,
-    category: "KVS",
-    title: "KVS PRACTICE & MOCK SET",
-    badge: "SOON",
-    meta: "Practice",
-    description: "Mock-based preparation resources for repeated practice.",
-    tone: "purple",
-    status: "inactive",
-    featured: false
-  }
-];
+import { categories, courses } from "../lib/courses";
 
 function CourseArtwork({ tone, badge }) {
   return (
@@ -108,7 +40,13 @@ function CourseCard({ course }) {
 
   return (
     <article className={`course-card ${course.status === "inactive" ? "course-disabled" : ""}`}>
-      <CourseArtwork tone={course.tone} badge={course.badge} />
+      <Link
+        href={`/course/${course.id}`}
+        className="course-card-link"
+        aria-label={`Open ${course.title}`}
+      >
+        <CourseArtwork tone={course.tone} badge={course.badge} />
+      </Link>
 
       <div className="course-body">
         <div className="course-meta-row">
@@ -118,7 +56,9 @@ function CourseCard({ course }) {
           {course.status === "inactive" && <span className="status-chip">COMING SOON</span>}
         </div>
 
-        <h3>{course.title}</h3>
+        <Link href={`/course/${course.id}`} className="course-title-link">
+          <h3>{course.title}</h3>
+        </Link>
         <p>{course.description}</p>
 
         <div className="course-divider" />
@@ -296,7 +236,7 @@ export default function Home() {
 
         <div className="featured-row">
           {featuredCourses.map((course) => (
-            <div className="featured-mini-card" key={course.id}>
+            <Link className="featured-mini-card" key={course.id} href={`/course/${course.id}`}>
               <div className={`mini-art ${course.tone}`}>
                 <span>{course.category}</span>
                 <strong>{course.badge}</strong>

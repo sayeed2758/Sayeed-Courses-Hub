@@ -1,7 +1,7 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "EZEE VISION COURSE HUB",
+  title: "Sayeed Courses Hub",
   description: "Premium course learning hub",
 };
 
