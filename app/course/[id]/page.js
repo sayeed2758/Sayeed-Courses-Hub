@@ -1,6 +1,11 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, BookOpen, CheckCircle2, Clock3, FileText, PlayCircle, UserRound } from "lucide-react";
 import { getCourseById } from "../../../lib/courses";
+import { useAuth } from "../../providers";
+import { enrollInCourse } from "../../../lib/enrollment";
+import { useState } from "react";
 
 export function generateStaticParams() {
   return ["1", "2", "3", "4", "5", "6"].map((id) => ({ id }));
@@ -25,8 +30,12 @@ function CourseArtwork({ tone, badge }) {
   );
 }
 
-export default async function CourseDetailsPage({ params }) {
-  const { id } = await params;
+export default function CourseDetailsPage({ params }) {
+  const { user } = useAuth();
+  const [busy, setBusy] = useState(false);
+  const [enrolled, setEnrolled] = useState(false);
+  const [message, setMessage] = useState("");
+  const id = params?.id;
   const course = getCourseById(id);
 
   if (!course) {
@@ -69,14 +78,36 @@ export default async function CourseDetailsPage({ params }) {
           </div>
 
           <div className="detail-actions">
-            <button className="detail-enroll" disabled={!isActive}>
+            <button
+              className={`detail-enroll ${enrolled ? "enrolled-state" : ""}`}
+              disabled={!isActive || busy || enrolled}
+              onClick={async () => {
+                if (!user) {
+                  setMessage("Please sign in from the account button on the home page first.");
+                  return;
+                }
+                setBusy(true);
+                setMessage("");
+                try {
+                  const result = await enrollInCourse(user.uid, course.id);
+                  setEnrolled(true);
+                  setMessage(result.alreadyEnrolled ? "You are already enrolled." : "Course saved to My Enrolled Courses.");
+                } catch (err) {
+                  setMessage(err?.message || "Enrollment failed. Check Firebase setup.");
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
               <CheckCircle2 size={18} />
-              {isActive ? "ENROLL" : "COMING SOON"}
+              {!isActive ? "COMING SOON" : busy ? "SAVING…" : enrolled ? "ENROLLED" : "ENROLL"}
             </button>
             <button className="detail-study" disabled={!isActive}>
               LET&apos;S STUDY <ArrowRight size={19} />
             </button>
           </div>
+
+          {message && <div className="phase3-note success-detail-note">{message}</div>}
 
           <div className="phase3-note">
             <span>Phase 3</span>
