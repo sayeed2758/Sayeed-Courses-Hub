@@ -1,29 +1,33 @@
-# Sayeed Courses Hub — Phase 4
+# Sayeed Courses Hub — Phase 5
 
-Firebase-powered account and enrollment foundation.
+Firebase setup-readiness phase.
 
-## Phase 4 includes
-- Firebase client setup through environment variables
-- Google authentication
-- Account popover
-- Real Firestore enrollment records
-- Duplicate enrollment protection
-- My Enrolled Courses page
-- Course detail page enrollment
-- Enrollment state feedback
-- Firestore security rules
-- Mobile responsive account/enrollment UI
+## Phase 5 includes
+- Everything from Phase 4
+- More reliable Next.js dynamic course-page architecture
+- Graceful behavior when Firebase environment variables are missing
+- Firebase setup status in the account panel
+- `/setup` visual Firebase onboarding checklist
+- Cleaner deployment configuration guidance
+- Shared Firestore security rules
+- Google Authentication foundation retained
+- Real enrollment foundation retained
 
-## Before deployment
-1. Create/configure a Firebase project.
-2. Enable Authentication → Google.
-3. Create Firestore Database.
-4. Add the values from `.env.example` as Vercel Environment Variables.
-5. Publish `firestore.rules`.
+## Firebase setup order
+1. Create a Firebase project.
+2. Register a Web App.
+3. Enable Google Authentication.
+4. Create Cloud Firestore.
+5. Copy the Web App config into Vercel Environment Variables.
 6. Add your Vercel domain to Firebase Authentication → Authorized domains.
+7. Publish `firestore.rules`.
+8. Redeploy.
 
-## Important
-The Firebase config values are placeholders. Do not paste real credentials into public source files. Use Vercel Environment Variables for the `NEXT_PUBLIC_FIREBASE_*` values.
+## Environment variable names
+See `.env.example`.
+
+## Security
+Never put Firebase Admin SDK private keys or service-account JSON into the frontend project or GitHub.
 
 ## Local development
 ```bash
