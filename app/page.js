@@ -264,19 +264,26 @@ export default function Home() {
         </div>
 
         <div className="featured-row">
-          {featuredCourses.map((course) => (
-            <Link className="featured-mini-card" key={course.id} href={`/course/${course.id}`}>
-              <div className={`mini-art ${course.tone}`}>
-                <span>{course.category}</span>
-                <strong>{course.badge}</strong>
-              </div>
-              <div className="mini-copy">
-                <span>{course.meta}</span>
-                <h3>{course.title}</h3>
-              </div>
-            </Link>
-          ))}
+  {featuredCourses.map((course) => {
+    return (
+      <Link
+        className="featured-mini-card"
+        key={course.id}
+        href={`/course/${course.id}`}
+      >
+        <div className={`mini-art ${course.tone}`}>
+          <span>{course.category}</span>
+          <strong>{course.badge}</strong>
         </div>
+
+        <div className="mini-copy">
+          <span>{course.meta}</span>
+          <h3>{course.title}</h3>
+        </div>
+      </Link>
+    );
+  })}
+</div>
       </section>
 
       <section className="courses-grid">
