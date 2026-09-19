@@ -274,7 +274,7 @@ export default function Home() {
                 <span>{course.meta}</span>
                 <h3>{course.title}</h3>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </section>
