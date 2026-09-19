@@ -22,7 +22,19 @@ export default function AuthPanel({ onClose }) {
     }
   }
 
-  if (configError && !user) {\n    return (\n      <div className="auth-popover">\n        <button className="auth-close" onClick={onClose} aria-label="Close"><X size={16} /></button>\n        <span className="section-kicker">FIREBASE SETUP</span>\n        <h3>Account setup is pending.</h3>\n        <p>Firebase has not been connected yet. Complete the Phase 5 setup steps before enabling sign-in.</p>\n        <div className="setup-mini-note">Add the six <b>NEXT_PUBLIC_FIREBASE_*</b> values in Vercel Environment Variables.</div>\n      </div>\n    );\n  }\n\n  if (authLoading) {
+  if (configError && !user) {
+    return (
+      <div className="auth-popover">
+        <button className="auth-close" onClick={onClose} aria-label="Close"><X size={16} /></button>
+        <span className="section-kicker">FIREBASE SETUP</span>
+        <h3>Account setup is pending.</h3>
+        <p>Firebase has not been connected yet. Complete the Phase 5 setup steps before enabling sign-in.</p>
+        <div className="setup-mini-note">Add the six <b>NEXT_PUBLIC_FIREBASE_*</b> values in Vercel Environment Variables.</div>
+      </div>
+    );
+  }
+
+  if (authLoading) {
     return <div className="auth-popover"><span>Checking account…</span></div>;
   }
 
