@@ -1195,3 +1195,196 @@ a { color: inherit; text-decoration: none; }
 
 .course-title-link h3 { transition: color .2s ease; }
 .course-title-link:hover h3 { color: #ffffff; }
+
+
+.enrolled-state {
+  border-color: rgba(5,215,154,.55) !important;
+  color: #061d15 !important;
+  background: var(--green) !important;
+}
+
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0,0,0,.66);
+  backdrop-filter: blur(8px);
+}
+
+.auth-popover {
+  position: relative;
+  width: min(410px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 30px;
+  border: 1px solid rgba(255,255,255,.11);
+  border-radius: 24px;
+  color: #e9eeee;
+  background: #101313;
+  box-shadow: 0 30px 90px rgba(0,0,0,.55);
+  text-align: center;
+}
+
+.auth-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  color: #8c9494;
+  background: rgba(255,255,255,.05);
+}
+
+.auth-avatar {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 12px;
+  border-radius: 17px;
+  color: #062017;
+  background: var(--green);
+  font: 800 22px/1 Outfit, sans-serif;
+}
+
+.auth-popover h3 {
+  margin: 10px 0 7px;
+  font: 800 25px/1 Outfit, sans-serif;
+}
+
+.auth-popover p, .auth-email {
+  margin: 0;
+  color: #858e8e;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.auth-google {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 18px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  color: #111;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.auth-google:disabled { opacity: .55; cursor: not-allowed; }
+
+.auth-error {
+  margin-top: 12px;
+  color: #ff8d8d;
+  line-height: 1.5;
+}
+
+.simple-page {
+  width: min(1050px, calc(100% - 28px));
+  margin: 0 auto;
+  padding: 14px 0 40px;
+}
+
+.simple-header {
+  min-height: 64px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+}
+
+.simple-header > span:last-child { justify-self: end; }
+
+.enrolled-page-head { padding: 55px 4px 26px; }
+.enrolled-page-head h1 {
+  margin: 9px 0 10px;
+  font: 800 clamp(39px, 6vw, 68px)/.95 Outfit, sans-serif;
+  letter-spacing: -.05em;
+}
+.enrolled-page-head p {
+  margin: 0;
+  color: #858e8e;
+  font-size: 13px;
+}
+
+.enrolled-list { display: grid; gap: 13px; }
+
+.enrolled-row {
+  display: grid;
+  grid-template-columns: 105px 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 19px;
+  color: inherit;
+  background: #101212;
+  transition: transform .2s ease, border-color .2s ease;
+}
+
+.enrolled-row:hover {
+  transform: translateY(-1px);
+  border-color: rgba(5,215,154,.25);
+}
+
+.enrolled-thumb { min-height: 95px; border-radius: 13px; }
+.enrolled-copy > span {
+  color: #687272;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.enrolled-copy h2 {
+  margin: 7px 0 5px;
+  font: 800 22px/1 Outfit, sans-serif;
+  letter-spacing: -.03em;
+}
+.enrolled-copy small { color: #05d79a; font-size: 10px; font-weight: 800; }
+.enrolled-row > svg { color: #05d79a; margin-right: 9px; }
+
+.account-empty {
+  min-height: 350px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 30px;
+  border: 1px dashed rgba(255,255,255,.13);
+  border-radius: 24px;
+  color: #737c7c;
+  text-align: center;
+}
+.account-empty h2 {
+  margin: 13px 0 6px;
+  color: #edf0f0;
+  font: 800 27px/1 Outfit, sans-serif;
+}
+.account-empty p { margin: 0; font-size: 12px; }
+.account-button { width: auto; margin-top: 18px; padding: 0 20px; }
+
+.success-detail-note {
+  border-color: rgba(5,215,154,.22);
+  color: #8de8ca;
+  background: rgba(5,215,154,.05);
+}
+
+@media (max-width: 560px) {
+  .simple-header { grid-template-columns: 1fr auto; }
+  .simple-header .detail-brand { display: none; }
+  .enrolled-page-head { padding-top: 42px; }
+  .enrolled-row { grid-template-columns: 80px 1fr; }
+  .enrolled-thumb { min-height: 80px; }
+  .enrolled-row > svg { display: none; }
+}

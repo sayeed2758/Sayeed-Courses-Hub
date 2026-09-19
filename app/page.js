@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import AuthPanel from "../components/AuthPanel";
+import { useAuth } from "./providers";
+import { enrollInCourse } from "../lib/enrollment";
 import {
   ArrowRight,
   BookOpen,
@@ -36,15 +39,30 @@ function CourseArtwork({ tone, badge }) {
 }
 
 function CourseCard({ course }) {
-  const [notice, setNotice] = useState(false);
+  const { user } = useAuth();
+  const [notice, setNotice] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function handleEnroll() {
+    if (!user) {
+      setNotice("SIGN_IN");
+      return;
+    }
+    setBusy(true);
+    setNotice("");
+    try {
+      const result = await enrollInCourse(user.uid, course.id);
+      setNotice(result.alreadyEnrolled ? "ALREADY" : "ENROLLED");
+    } catch (err) {
+      setNotice(err?.message || "Could not enroll. Check Firebase setup.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <article className={`course-card ${course.status === "inactive" ? "course-disabled" : ""}`}>
-      <Link
-        href={`/course/${course.id}`}
-        className="course-card-link"
-        aria-label={`Open ${course.title}`}
-      >
+      <Link href={`/course/${course.id}`} className="course-card-link" aria-label={`Open ${course.title}`}>
         <CourseArtwork tone={course.tone} badge={course.badge} />
       </Link>
 
@@ -65,30 +83,39 @@ function CourseCard({ course }) {
 
         <div className="course-actions">
           <button
-            className="enroll-button"
-            disabled={course.status !== "active"}
-            onClick={() => setNotice(true)}
+            className={`enroll-button ${notice === "ENROLLED" || notice === "ALREADY" ? "enrolled-state" : ""}`}
+            disabled={course.status !== "active" || busy}
+            onClick={handleEnroll}
           >
             <span className="enroll-icon"><Check size={16} /></span>
-            ENROLL
+            {busy ? "SAVING…" : notice === "ENROLLED" || notice === "ALREADY" ? "ENROLLED" : "ENROLL"}
           </button>
 
-          <button
-            className="study-button"
-            disabled={course.status !== "active"}
-            onClick={() => setNotice(true)}
-          >
+          <Link href={`/course/${course.id}`} className="study-button">
             LET&apos;S STUDY <ArrowRight size={19} />
-          </button>
+          </Link>
         </div>
 
-        {notice && (
-          <div className="phase-notice" role="status">
-            <span>Catalogue controls are ready. Real enrollment comes in Phase 4.</span>
-            <button onClick={() => setNotice(false)} aria-label="Close notice">
-              <X size={15} />
-            </button>
+        {notice === "SIGN_IN" && (
+          <div className="phase-notice">
+            <span>Sign in first to save this course.</span>
+            <Link href="/enrolled">Open Account</Link>
           </div>
+        )}
+        {notice === "ENROLLED" && (
+          <div className="phase-notice success-notice">
+            <span>Course saved to My Enrolled Courses.</span>
+            <Link href="/enrolled">View</Link>
+          </div>
+        )}
+        {notice === "ALREADY" && (
+          <div className="phase-notice success-notice">
+            <span>You are already enrolled.</span>
+            <Link href="/enrolled">View</Link>
+          </div>
+        )}
+        {notice && !["SIGN_IN", "ENROLLED", "ALREADY"].includes(notice) && (
+          <div className="phase-notice"><span>{notice}</span></div>
         )}
       </div>
     </article>
@@ -96,6 +123,8 @@ function CourseCard({ course }) {
 }
 
 export default function Home() {
+  const { user } = useAuth();
+  const [authOpen, setAuthOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [query, setQuery] = useState("");
 
@@ -137,12 +166,12 @@ export default function Home() {
           <a className="active" href="#courses">Courses</a>
           <a href="#categories">Categories</a>
           <a href="#featured">Featured</a>
-          <a href="#enrolled">Enrolled</a>
+          <Link href="/enrolled">Enrolled</Link>
           <a href="#faq">FAQ</a>
         </nav>
 
         <div className="top-actions">
-          <button className="icon-button" aria-label="Account">
+          <button className="icon-button" aria-label="Account" onClick={() => setAuthOpen(true)}>
             <UserRound size={19} />
           </button>
           <button className="menu-button" aria-label="Menu">
@@ -303,6 +332,12 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      {authOpen && (
+        <div className="auth-overlay">
+          <AuthPanel onClose={() => setAuthOpen(false)} />
+        </div>
+      )}
 
       <footer className="footer">
         <div className="footer-brand">
