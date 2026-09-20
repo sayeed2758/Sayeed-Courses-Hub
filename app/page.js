@@ -239,8 +239,10 @@ export default function Home() {
   return (
     <main className="reference-shell">
       <header className="site-header">
-        <Link href="/" className="brand-lockup">
-          <span className="brand-logo"><span className="brand-logo-s">SC</span><span className="brand-logo-dot" /></span>
+        <Link href="/" className="brand-lockup" aria-label="Sayeed Courses Hub home">
+          <span className="brand-logo">
+            <img src="/shahid-logo.png" alt="Shahid" />
+          </span>
           <span className="brand-text">
             <strong>Sayeed Courses Hub</strong>
             <small>Your Next Skills Start Here</small>
