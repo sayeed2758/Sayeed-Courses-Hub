@@ -3,48 +3,39 @@ import { ArrowLeft, CheckCircle2, ExternalLink, ShieldCheck } from "lucide-react
 
 export default function FirebaseSetupPage() {
   const steps = [
-    ["Create a Firebase project", "Create one project for Sayeed Courses Hub in Firebase Console."],
-    ["Register the Web app", "From Project Overview, add a Web app and copy its Firebase config."],
+    ["Create the Firebase project", "Create one project for Sayeed Courses Hub in Firebase Console."],
+    ["Register the Web app", "Project Overview → add a Web app → copy the six Firebase config values."],
     ["Enable Google sign-in", "Authentication → Sign-in method → Google → Enable → Save."],
-    ["Create Firestore", "Build a Cloud Firestore database and choose the desired location."],
-    ["Add environment variables", "Put the six NEXT_PUBLIC_FIREBASE_* values in Vercel, not inside source code."],
-    ["Add your domain", "Add your Vercel domain to Firebase Authentication → Authorized domains."],
-    ["Publish security rules", "Deploy the included firestore.rules after reviewing them."]
+    ["Create Firestore", "Build → Firestore Database → create the database and finish setup."],
+    ["Add all six environment variables", "Vercel → Settings → Environment Variables. Add the six NEXT_PUBLIC_FIREBASE_* names exactly as written."],
+    ["Add your Vercel domain", "Firebase → Authentication → Settings → Authorized domains → add your production Vercel domain."],
+    ["Publish firestore.rules", "Use the rules file included in this ZIP after reviewing it."],
+    ["Create a fresh deployment", "Environment variables are injected at build time, so redeploy after every variable change."]
   ];
 
   return (
-    <main className="simple-page setup-page">
-      <header className="simple-header">
-        <Link href="/" className="back-link"><ArrowLeft size={18} /> Back to Hub</Link>
-        <div className="detail-brand"><span className="detail-brand-dot" /> SAYEED COURSES HUB</div>
+    <main className="reference-shell setup-shell-new">
+      <header className="site-header">
+        <Link href="/" className="back-home"><ArrowLeft size={19} /> Back</Link>
+        <Link href="/" className="brand-lockup"><span className="brand-logo">S</span><span className="brand-text"><strong>SAYEED COURSES</strong><small>YOUR NEXT SKILL STARTS HERE</small></span></Link>
         <span />
       </header>
-
-      <section className="setup-hero">
-        <span className="section-kicker"><ShieldCheck size={14} /> PHASE 5</span>
-        <h1>Firebase Setup</h1>
-        <p>Follow these steps from your phone. No code changes are required while creating the Firebase project.</p>
-        <a className="primary-button" href="https://console.firebase.google.com/" target="_blank" rel="noreferrer">
-          Open Firebase Console <ExternalLink size={16} />
-        </a>
+      <section className="page-heading-new">
+        <span className="hero-kicker"><ShieldCheck size={15} /> PHASE 5</span>
+        <h1>Firebase setup.</h1>
+        <p>Phone-friendly setup notes for Google sign-in and Firestore enrollment.</p>
+        <a className="modal-primary inline-button" href="https://console.firebase.google.com/" target="_blank" rel="noreferrer">OPEN FIREBASE CONSOLE <ExternalLink size={16} /></a>
       </section>
-
-      <section className="setup-list">
+      <div className="setup-list-new">
         {steps.map(([title, description], index) => (
-          <div className="setup-row" key={title}>
-            <div className="setup-number">{String(index + 1).padStart(2, "0")}</div>
-            <div className="setup-copy">
-              <h2>{title}</h2>
-              <p>{description}</p>
-            </div>
+          <div className="setup-row-new" key={title}>
+            <span>{String(index + 1).padStart(2, "0")}</span>
+            <div><h2>{title}</h2><p>{description}</p></div>
             <CheckCircle2 size={19} />
           </div>
         ))}
-      </section>
-
-      <div className="setup-warning">
-        <strong>Important:</strong> Firebase web configuration values are not the same thing as a server admin key. Never paste a Firebase Admin SDK private key, service account JSON, or other secret credential into this project or GitHub.
       </div>
+      <div className="setup-warning-new"><strong>Important:</strong> Never put a Firebase Admin SDK private key or service-account JSON into this frontend project or GitHub.</div>
     </main>
   );
 }
