@@ -1,1 +1,315 @@
+"use client";
 
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, Check, Database, ExternalLink, Plus, Save, ShieldCheck, Trash2 } from "lucide-react";
+import { useAuth } from "../providers";
+import { courses as staticCourses } from "../../lib/courses";
+import { loadCatalogueCourses } from "../../lib/catalogue";
+import { ensureCatalogueSeeded, isUserAdmin, removeCourse, saveCourse, seedStaticCourses } from "../../lib/admin";
+
+const emptyCourse = {
+  id: "",
+  number: 0,
+  category: "KVS",
+  title: "",
+  artTitle: "COURSE",
+  badge: "NEW",
+  meta: "Course",
+  description: "",
+  tone: "blue",
+  status: "active",
+  featured: false,
+  telegramUrl: "",
+  thumbnailUrl: "",
+  instructor: "Sayeed Courses Hub",
+  duration: "Self-paced",
+  lessons: "",
+  resources: "",
+  language: "Hindi + English",
+  overview: "",
+  learn: [],
+  modules: []
+};
+
+function toEditor(course) {
+  return {
+    ...emptyCourse,
+    ...course,
+    id: String(course?.id || ""),
+    learnText: Array.isArray(course?.learn) ? course.learn.join(", ") : "",
+    modulesText: Array.isArray(course?.modules) ? course.modules.join(", ") : ""
+  };
+}
+
+function cleanForSave(editor) {
+  return {
+    id: editor.id.trim(),
+    number: Number(editor.number || 0),
+    category: editor.category.trim(),
+    title: editor.title.trim(),
+    artTitle: editor.artTitle.trim(),
+    badge: editor.badge.trim(),
+    meta: editor.meta.trim(),
+    description: editor.description.trim(),
+    tone: editor.tone,
+    status: editor.status,
+    featured: Boolean(editor.featured),
+    telegramUrl: editor.telegramUrl.trim(),
+    thumbnailUrl: editor.thumbnailUrl.trim(),
+    instructor: editor.instructor.trim(),
+    duration: editor.duration.trim(),
+    lessons: editor.lessons.trim(),
+    resources: editor.resources.trim(),
+    language: editor.language.trim(),
+    overview: editor.overview.trim(),
+    learn: editor.learnText.split(",").map((x) => x.trim()).filter(Boolean),
+    modules: editor.modulesText.split(",").map((x) => x.trim()).filter(Boolean)
+  };
+}
+
+export default function AdminPage() {
+  const { user, authLoading } = useAuth();
+  const [adminChecked, setAdminChecked] = useState(false);
+  const [admin, setAdmin] = useState(false);
+  const [items, setItems] = useState([]);
+  const [editor, setEditor] = useState(toEditor(emptyCourse));
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  async function loadItems() {
+    setLoading(true);
+    setError("");
+    try {
+      const list = await loadCatalogueCourses();
+      setItems(list);
+    } catch (err) {
+      setError(err?.message || "Could not load catalogue.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    let alive = true;
+    async function check() {
+      setAdminChecked(false);
+      if (authLoading || !user) {
+        if (alive) setAdmin(false);
+        return;
+      }
+      const allowed = await isUserAdmin(user.uid);
+      if (alive) {
+        setAdmin(allowed);
+        setAdminChecked(true);
+      }
+      if (allowed) {
+        try {
+          await ensureCatalogueSeeded(staticCourses);
+          await loadItems();
+        } catch (err) {
+          if (alive) setError(err?.message || "Could not initialize the admin catalogue.");
+          if (alive) setLoading(false);
+        }
+      }
+    }
+    check();
+    return () => { alive = false; };
+  }, [user, authLoading]);
+
+  const sortedItems = useMemo(() => [...items].sort((a, b) => Number(a.number) - Number(b.number)), [items]);
+
+  function chooseCourse(course) {
+    setEditor(toEditor(course));
+    setMessage("");
+    setError("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function startNew() {
+    const nextNumber = sortedItems.reduce((max, item) => Math.max(max, Number(item.number || 0)), 0) + 1;
+    setEditor(toEditor({ ...emptyCourse, number: nextNumber, id: String(nextNumber) }));
+    setMessage("");
+    setError("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function handleSave(event) {
+    event.preventDefault();
+    setBusy(true);
+    setMessage("");
+    setError("");
+    try {
+      const payload = cleanForSave(editor);
+      if (!payload.id || !payload.title || !payload.category) throw new Error("Course ID, title and category are required.");
+      const saved = await saveCourse(payload);
+      setItems((current) => {
+        const without = current.filter((item) => String(item.id) !== String(saved.id));
+        return [...without, saved].sort((a, b) => Number(a.number) - Number(b.number));
+      });
+      setEditor(toEditor(saved));
+      setMessage("Course saved to the Firestore catalogue.");
+    } catch (err) {
+      setError(err?.message || "Could not save course.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDelete(course) {
+    if (!window.confirm(`Delete “${course.title}” from the Firestore catalogue?`)) return;
+    setBusy(true);
+    setMessage("");
+    setError("");
+    try {
+      await removeCourse(course.id);
+      setItems((current) => current.filter((item) => String(item.id) !== String(course.id)));
+      setEditor(toEditor(emptyCourse));
+      setMessage("Course deleted from Firestore. Static fallback remains available until the remote catalogue is reseeded.");
+    } catch (err) {
+      setError(err?.message || "Could not delete course.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleSeed() {
+    setBusy(true);
+    setMessage("");
+    setError("");
+    try {
+      await seedStaticCourses(staticCourses);
+      await loadItems();
+      setMessage("Static catalogue synced to Firestore.");
+    } catch (err) {
+      setError(err?.message || "Could not sync catalogue.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (authLoading || !adminChecked) {
+    return <main className="reference-shell admin-shell"><div className="page-empty"><span>Checking admin access...</span></div></main>;
+  }
+
+  if (!user) {
+    return (
+      <main className="reference-shell admin-shell">
+        <header className="site-header">
+          <Link href="/" className="back-home"><ArrowLeft size={19} /> Back</Link>
+          <span className="brand-text"><strong>Sayeed Courses Hub</strong><small>ADMIN CONTROL</small></span>
+          <span />
+        </header>
+        <div className="page-empty admin-gate">
+          <ShieldCheck size={31} />
+          <h2>Sign in required</h2>
+          <p>Use the Google account that has been granted admin access in Firestore.</p>
+          <Link href="/" className="modal-primary">BACK TO COURSES</Link>
+        </div>
+      </main>
+    );
+  }
+
+  if (!admin) {
+    return (
+      <main className="reference-shell admin-shell">
+        <header className="site-header">
+          <Link href="/" className="back-home"><ArrowLeft size={19} /> Back</Link>
+          <span className="brand-text"><strong>Sayeed Courses Hub</strong><small>ADMIN CONTROL</small></span>
+          <span />
+        </header>
+        <div className="page-empty admin-gate">
+          <ShieldCheck size={31} />
+          <h2>Admin access not enabled</h2>
+          <p>In Firebase Firestore, create collection <strong>admins</strong>, then create a document whose ID is your Google UID:</p>
+          <code>{user.uid}</code>
+          <p className="admin-hint">Add a field such as <strong>role: admin</strong>. The frontend cannot create this trusted role for you.</p>
+          <a className="modal-primary" href="https://console.firebase.google.com/" target="_blank" rel="noreferrer">OPEN FIREBASE <ExternalLink size={15} /></a>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="reference-shell admin-shell">
+      <header className="site-header admin-header">
+        <Link href="/" className="back-home"><ArrowLeft size={19} /> Back</Link>
+        <div className="brand-lockup">
+          <span className="brand-logo"><img src="/shahid-logo.png" alt="Shahid" /></span>
+          <span className="brand-text"><strong>Sayeed Courses Hub</strong><small>ADMIN CONTROL CENTER</small></span>
+        </div>
+        <span className="admin-badge"><ShieldCheck size={14} /> ADMIN</span>
+      </header>
+
+      <section className="page-heading-new admin-heading">
+        <span className="hero-kicker">COURSE MANAGEMENT</span>
+        <h1>Control your catalogue.</h1>
+        <p>Create, edit, feature or deactivate courses without touching the frontend code.</p>
+      </section>
+
+      {message && <div className="admin-message success"><Check size={17} /> {message}</div>}
+      {error && <div className="admin-message error">{error}</div>}
+
+      <div className="admin-toolbar">
+        <button type="button" className="modal-primary" onClick={startNew}><Plus size={17} /> NEW COURSE</button>
+        <button type="button" className="admin-secondary" onClick={handleSeed} disabled={busy}><Database size={17} /> SYNC STATIC CATALOGUE</button>
+      </div>
+
+      <section className="admin-layout">
+        <form className="admin-form" onSubmit={handleSave}>
+          <div className="admin-form-head"><span>COURSE EDITOR</span><strong>{editor.id ? `#${editor.number}` : "NEW"}</strong></div>
+
+          <label>Course ID<input value={editor.id} onChange={(e) => setEditor({ ...editor, id: e.target.value })} placeholder="e.g. 7" /></label>
+          <div className="admin-field-grid">
+            <label>Number<input type="number" min="1" value={editor.number} onChange={(e) => setEditor({ ...editor, number: e.target.value })} /></label>
+            <label>Category<input list="admin-category-list" value={editor.category} onChange={(e) => setEditor({ ...editor, category: e.target.value })} /><datalist id="admin-category-list"><option value="KVS" /><option value="NVS" /><option value="CTET" /><option value="Teaching" /><option value="SSC" /><option value="General" /></datalist></label>
+          </div>
+          <label>Course title<input value={editor.title} onChange={(e) => setEditor({ ...editor, title: e.target.value })} /></label>
+          <div className="admin-field-grid">
+            <label>Artwork title<input value={editor.artTitle} onChange={(e) => setEditor({ ...editor, artTitle: e.target.value })} /></label>
+            <label>Badge<select value={editor.badge} onChange={(e) => setEditor({ ...editor, badge: e.target.value })}><option>FREE</option><option>NEW</option><option>POPULAR</option><option>SOON</option><option>PREMIUM</option></select></label>
+          </div>
+          <label>Meta label<input value={editor.meta} onChange={(e) => setEditor({ ...editor, meta: e.target.value })} /></label>
+          <label>Description<textarea rows="3" value={editor.description} onChange={(e) => setEditor({ ...editor, description: e.target.value })} /></label>
+          <div className="admin-field-grid">
+            <label>Tone<select value={editor.tone} onChange={(e) => setEditor({ ...editor, tone: e.target.value })}><option>blue</option><option>purple</option><option>teal</option><option>orange</option></select></label>
+            <label>Status<select value={editor.status} onChange={(e) => setEditor({ ...editor, status: e.target.value })}><option value="active">Active</option><option value="inactive">Coming Soon</option></select></label>
+          </div>
+          <label>Thumbnail URL<input value={editor.thumbnailUrl} onChange={(e) => setEditor({ ...editor, thumbnailUrl: e.target.value })} placeholder="https://..." /></label>
+          <label>Telegram study URL<input value={editor.telegramUrl} onChange={(e) => setEditor({ ...editor, telegramUrl: e.target.value })} placeholder="https://t.me/..." /></label>
+          <div className="admin-field-grid">
+            <label>Instructor<input value={editor.instructor} onChange={(e) => setEditor({ ...editor, instructor: e.target.value })} /></label>
+            <label>Duration<input value={editor.duration} onChange={(e) => setEditor({ ...editor, duration: e.target.value })} /></label>
+          </div>
+          <div className="admin-field-grid">
+            <label>Lessons<input value={editor.lessons} onChange={(e) => setEditor({ ...editor, lessons: e.target.value })} /></label>
+            <label>Resources<input value={editor.resources} onChange={(e) => setEditor({ ...editor, resources: e.target.value })} /></label>
+          </div>
+          <label>Language<input value={editor.language} onChange={(e) => setEditor({ ...editor, language: e.target.value })} /></label>
+          <label>Overview<textarea rows="4" value={editor.overview} onChange={(e) => setEditor({ ...editor, overview: e.target.value })} /></label>
+          <label>What you&apos;ll learn <small>Comma separated</small><textarea rows="3" value={editor.learnText || ""} onChange={(e) => setEditor({ ...editor, learnText: e.target.value })} /></label>
+          <label>Modules <small>Comma separated</small><textarea rows="3" value={editor.modulesText || ""} onChange={(e) => setEditor({ ...editor, modulesText: e.target.value })} /></label>
+          <label className="admin-check"><input type="checkbox" checked={Boolean(editor.featured)} onChange={(e) => setEditor({ ...editor, featured: e.target.checked })} /> Feature this course on the home page</label>
+          <button className="modal-primary admin-save" type="submit" disabled={busy}><Save size={17} /> {busy ? "SAVING..." : "SAVE COURSE"}</button>
+        </form>
+
+        <section className="admin-list-panel">
+          <div className="admin-form-head"><span>LIVE CATALOGUE</span><strong>{loading ? "..." : sortedItems.length}</strong></div>
+          <div className="admin-course-list">
+            {loading ? <div className="admin-list-empty">Loading catalogue...</div> : sortedItems.map((course) => (
+              <article className="admin-course-row" key={course.id}>
+                <div><span>#{course.number} · {course.category}</span><strong>{course.title}</strong><small>{course.status === "active" ? "ACTIVE" : "COMING SOON"}</small></div>
+                <div className="admin-row-actions">
+                  <button type="button" className="admin-edit" onClick={() => chooseCourse(course)}>EDIT</button>
+                  <button type="button" className="admin-delete" onClick={() => handleDelete(course)} disabled={busy}><Trash2 size={15} /></button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      </section>
+    </main>
+  );
+}
