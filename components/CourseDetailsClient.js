@@ -9,7 +9,8 @@ import {
   CheckCircle2,
   Clock3,
   FileText,
-  Send
+  Send,
+  Sparkles
 } from "lucide-react";
 import { useAuth } from "../app/providers";
 import { enrollInCourse } from "../lib/enrollment";
@@ -72,7 +73,7 @@ export default function CourseDetailsClient({ course }) {
       <header className="site-header detail-site-header">
         <Link href="/" className="back-home"><ArrowLeft size={19} /> Back</Link>
         <Link href="/" className="brand-lockup">
-          <span className="brand-logo">S</span>
+          <span className="brand-logo"><span className="brand-logo-s">S</span><Sparkles className="brand-logo-spark" size={13} /></span>
           <span className="brand-text"><strong>SAYEED COURSES</strong><small>YOUR NEXT SKILL STARTS HERE</small></span>
         </Link>
         <Link href="/" className="back-home"><span className="back-desktop-label">Courses</span> <ArrowUpRight size={19} /></Link>
