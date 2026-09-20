@@ -1,20 +1,21 @@
-# Sayeed Courses Hub — Reference UI rebuild
+# Sayeed Courses Hub — Batch 3
 
-This rebuild keeps the existing Firebase + Firestore enrollment architecture but changes the catalogue UI to follow the visual method from the reference screenshots: handwritten-style typography, rounded panels, large search, sort control, category sheet, FAQ sheet, course shelf/cart interaction, and mobile-first course cards.
+Premium course catalogue with Google sign-in, Firestore enrollment and an admin-managed course catalogue.
 
-## Important Firebase fix
-The previous `lib/firebase.js` checked environment variables with `process.env[key]`. Next.js does not inline dynamic `process.env` lookups in the client bundle, so the app could incorrectly report **Firebase Setup** even when all six Vercel variables were present.
+## Batch 3 scope
 
-This version uses explicit `process.env.NEXT_PUBLIC_FIREBASE_*` references and then checks those values.
+- Phase 10: Course Experience
+- Phase 11: Firebase / Account UX
+- Phase 12: Admin Control Center
 
-After uploading to GitHub, create a fresh Vercel deployment after the six Production environment variables are present.
+## Main routes
 
-## Course links
-Each course has a `telegramUrl` field in `lib/courses.js`. Add each private Telegram learning link there before launch. Empty links intentionally show a safe message instead of opening a broken URL.
+- `/` — catalogue
+- `/course/[id]` — course experience
+- `/enrolled` — My Courses
+- `/admin` — admin control center
+- `/setup` — Firebase + admin setup guide
 
-## Local commands
-```bash
-npm install
-npm run build
-npm run start
-```
+## Important setup
+
+Publish `firestore.rules` and follow `ADMIN-SETUP-GUIDE.md` before using `/admin`.

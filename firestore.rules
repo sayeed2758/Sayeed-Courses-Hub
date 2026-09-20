@@ -3,6 +3,26 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    match /admins/{uid} {
+      // Admin access is provisioned manually in the Firebase Console.
+      // The frontend can verify its own role, but cannot create or edit roles.
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    match /courses/{courseId} {
+      // Public catalogue data is safe to read; only verified admins may write.
+      allow read: if true;
+      allow create: if isAdmin()
+        && request.resource.data.id == courseId;
+      allow update, delete: if isAdmin();
+    }
+
     match /enrollments/{enrollmentId} {
       allow create: if request.auth != null
         && request.resource.data.userId == request.auth.uid
