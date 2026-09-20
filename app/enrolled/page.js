@@ -94,7 +94,7 @@ export default function EnrolledPage() {
           {visibleCourses.map(({ item, course }) => (
             <Link className="enrolled-card-new" href={`/course/${course.id}`} key={item.id}>
               <div className={`learning-thumb ${course.tone}`}>
-                {course.thumbnailUrl ? <img src={course.thumbnailUrl} alt="" /> : null}
+                {course.thumbnailUrl ? <img src={course.thumbnailUrl} alt="" loading="lazy" decoding="async" /> : null}
                 <span>{course.category}</span>
               </div>
               <div><small>{course.category}</small><h2>{course.title}</h2><span>Enrolled course</span></div>
