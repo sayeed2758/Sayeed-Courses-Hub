@@ -66,7 +66,7 @@ function Modal({ title, kicker, onClose, children, className = "" }) {
   );
 }
 
-function CourseCard({ course, isEnrolled, onEnrolled }) {
+function CourseCard({ course, isEnrolled, onEnrolled, onNeedsAuth }) {
   const { user } = useAuth();
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -76,6 +76,7 @@ function CourseCard({ course, isEnrolled, onEnrolled }) {
     if (!active) return;
     if (!user) {
       setNotice("SIGN_IN");
+      onNeedsAuth?.();
       return;
     }
 
@@ -120,7 +121,7 @@ function CourseCard({ course, isEnrolled, onEnrolled }) {
             {busy ? "SAVING..." : isEnrolled ? "ENROLLED" : "ENROLL"}
           </button>
 
-          <Link href={`/course/${course.id}`} className="study-button">
+          <Link href={`/course/${course.id}`} className={`study-button ${!active ? "is-disabled" : ""}`} aria-disabled={!active}>
             LET&apos;S STUDY <ArrowUpRight size={18} />
           </Link>
         </div>
@@ -239,7 +240,7 @@ export default function Home() {
     <main className="reference-shell">
       <header className="site-header">
         <Link href="/" className="brand-lockup">
-          <span className="brand-logo">S</span>
+          <span className="brand-logo"><span className="brand-logo-s">S</span><Sparkles className="brand-logo-spark" size={13} /></span>
           <span className="brand-text">
             <strong>SAYEED COURSES</strong>
             <small>YOUR NEXT SKILL STARTS HERE</small>
@@ -324,6 +325,7 @@ export default function Home() {
               course={course}
               isEnrolled={enrolledIds.includes(String(course.id))}
               onEnrolled={markEnrolled}
+              onNeedsAuth={() => setAuthOpen(true)}
             />
           ))}
         </div>

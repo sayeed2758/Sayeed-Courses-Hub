@@ -2,7 +2,7 @@ import "./globals.css";
 import { AuthProvider } from "./providers";
 
 export const metadata = {
-  title: "Sayeed Courses Hub",
+  title: "Sayeed Courses Hub — Find Your Next Skill",
   description: "Find your next skill.",
 };
 
