@@ -15,11 +15,14 @@ import {
   RefreshCw,
   Search,
   Send,
+  ShieldCheck,
   ShoppingBag,
   Sparkles,
   X
 } from "lucide-react";
-import { categories, courses, getCategoryCounts } from "../lib/courses";
+import { courses, getCategoryCounts } from "../lib/courses";
+import { loadCatalogueCourses } from "../lib/catalogue";
+import { isUserAdmin } from "../lib/admin";
 
 const FAQS = [
   ["How do I enroll in a course?", "Sign in with Google, tap ENROLL on the course card, and the course is saved to My Courses."],
@@ -33,6 +36,9 @@ const FAQS = [
 function CourseArtwork({ course }) {
   return (
     <div className={`course-cover ${course.tone}`}>
+      {course.thumbnailUrl ? (
+        <img className="cover-thumbnail" src={course.thumbnailUrl} alt="" loading="lazy" />
+      ) : null}
       <div className="cover-grid" />
       <div className="cover-orb orb-one" />
       <div className="cover-orb orb-two" />
@@ -168,6 +174,8 @@ export default function Home() {
   const [enrolledIds, setEnrolledIds] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState(null);
+  const [catalogueCourses, setCatalogueCourses] = useState(courses);
+  const [adminUser, setAdminUser] = useState(false);
 
   useEffect(() => {
     const modalOpen = categoryOpen || faqOpen || menuOpen || learningOpen || authOpen;
@@ -190,6 +198,26 @@ export default function Home() {
 
   useEffect(() => {
     let alive = true;
+    loadCatalogueCourses().then((items) => {
+      if (alive && items.length) setCatalogueCourses(items);
+    });
+    return () => { alive = false; };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    if (!user) {
+      setAdminUser(false);
+      return () => { alive = false; };
+    }
+    isUserAdmin(user.uid).then((result) => {
+      if (alive) setAdminUser(result);
+    });
+    return () => { alive = false; };
+  }, [user]);
+
+  useEffect(() => {
+    let alive = true;
 
     async function loadEnrollments() {
       if (!user) {
@@ -208,11 +236,15 @@ export default function Home() {
     return () => { alive = false; };
   }, [user]);
 
-  const categoryCounts = useMemo(() => getCategoryCounts(courses), []);
+  const catalogueCategories = useMemo(() => [
+    "All",
+    ...Array.from(new Set(catalogueCourses.map((course) => course.category).filter(Boolean)))
+  ], [catalogueCourses]);
+  const categoryCounts = useMemo(() => getCategoryCounts(catalogueCourses), [catalogueCourses]);
 
   const filteredCourses = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    const result = courses.filter((course) => {
+    const result = catalogueCourses.filter((course) => {
       const categoryMatch = selectedCategory === "All" || course.category === selectedCategory;
       const queryMatch = !normalized || [
         course.title,
@@ -227,22 +259,26 @@ export default function Home() {
     if (sort === "category") return [...result].sort((a, b) => a.category.localeCompare(b.category));
     if (sort === "newest") return [...result].sort((a, b) => Number(b.number) - Number(a.number));
     return [...result].sort((a, b) => Number(a.number) - Number(b.number));
-  }, [query, selectedCategory, sort]);
+  }, [catalogueCourses, query, selectedCategory, sort]);
 
-  const featuredCourses = courses.filter((course) => course.featured);
+  const featuredCourses = catalogueCourses.filter((course) => course.featured);
   const enrolledCourses = enrolledIds
-    .map((id) => courses.find((course) => String(course.id) === String(id)))
+    .map((id) => catalogueCourses.find((course) => String(course.id) === String(id)))
     .filter(Boolean);
 
   async function refreshCatalogue() {
     setRefreshing(true);
     setSortOpen(false);
     setCategoryOpen(false);
-    await new Promise((resolve) => setTimeout(resolve, 450));
-    setQuery("");
-    setSelectedCategory("All");
-    setSort("recommended");
-    setRefreshing(false);
+    try {
+      const latest = await loadCatalogueCourses();
+      if (latest.length) setCatalogueCourses(latest);
+    } finally {
+      setQuery("");
+      setSelectedCategory("All");
+      setSort("recommended");
+      setRefreshing(false);
+    }
   }
 
   function selectCategory(category) {
@@ -390,7 +426,7 @@ export default function Home() {
         <Modal title="Course categories" kicker="EXPLORE YOUR INTERESTS" onClose={() => setCategoryOpen(false)} className="categories-modal">
           <button className="reset-filters" type="button" onClick={() => selectCategory("All")}>Reset all filters ↻</button>
           <div className="category-list">
-            {categories.map((category) => (
+            {catalogueCategories.map((category) => (
               <button
                 key={category}
                 type="button"
@@ -468,6 +504,9 @@ export default function Home() {
             <button type="button" onClick={() => { setMenuOpen(false); setFaqOpen(true); }}><CircleHelp size={18} /> FAQs</button>
             <button type="button" onClick={() => { setMenuOpen(false); setCategoryOpen(true); }}><Sparkles size={18} /> Categories</button>
             <button type="button" onClick={() => { setMenuOpen(false); setLearningOpen(true); }}><ShoppingBag size={18} /> My Courses <span>{enrolledCourses.length}</span></button>
+            {adminUser && (
+              <Link href="/admin" className="menu-link-button" onClick={() => setMenuOpen(false)}><ShieldCheck size={18} /> Admin Panel <span>PRO</span></Link>
+            )}
             <button type="button" onClick={() => { setMenuOpen(false); setAuthOpen(true); }}><RefreshCw size={18} /> Sign in / Sign out</button>
           </div>
         </Modal>
