@@ -1,147 +1,82 @@
 "use client";
 
 import { useState } from "react";
-import { LogIn, LogOut, X } from "lucide-react";
+import Link from "next/link";
+import { LogIn, LogOut } from "lucide-react";
 import { useAuth } from "../app/providers";
 
-export default function AuthPanel({ onClose }) {
-  const {
-    user,
-    authLoading,
-    signInWithGoogle,
-    logout,
-    configError
-  } = useAuth();
-
+export default function AuthPanel({ onClose, embedded = false }) {
+  const { user, authLoading, signInWithGoogle, logout, configError } = useAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   async function handleGoogle() {
     setBusy(true);
     setError("");
-
     try {
       await signInWithGoogle();
       onClose?.();
     } catch (err) {
-      setError(
-        err?.message || "Sign-in failed. Please try again."
-      );
+      setError(err?.message || "Google sign-in failed. Please try again.");
     } finally {
       setBusy(false);
     }
   }
 
-  if (configError && !user) {
-    return (
-      <div className="auth-popover">
-        <button
-          className="auth-close"
-          onClick={onClose}
-          aria-label="Close"
-        >
-          <X size={16} />
-        </button>
-
-        <span className="section-kicker">FIREBASE SETUP</span>
-
-        <h3>Account setup is pending.</h3>
-
-        <p>
-          Firebase has not been connected yet. Complete the Phase 5
-          setup steps before enabling sign-in.
-        </p>
-
-        <div className="setup-mini-note">
-          Add the six <b>NEXT_PUBLIC_FIREBASE_*</b> values in Vercel
-          Environment Variables.
-        </div>
-      </div>
-    );
+  if (authLoading) {
+    return <div className={`auth-panel ${embedded ? "embedded" : ""}`}>Checking account...</div>;
   }
 
-  if (authLoading) {
+  if (configError && !user) {
     return (
-      <div className="auth-popover">
-        <span>Checking account...</span>
+      <div className={`auth-panel ${embedded ? "embedded" : ""}`}>
+        <div className="auth-status-chip">FIREBASE SETUP</div>
+        <h3>Connect your account</h3>
+        <p>The website is ready for Google sign-in, but the Firebase environment variables are not available in this deployment.</p>
+        <Link href="/setup" className="auth-secondary" onClick={onClose}>OPEN SETUP GUIDE</Link>
       </div>
     );
   }
 
   if (user) {
     return (
-      <div className="auth-popover">
+      <div className={`auth-panel ${embedded ? "embedded" : ""}`}>
+        <div className="auth-avatar">{(user.displayName || user.email || "U").slice(0, 1).toUpperCase()}</div>
+        <h3>{user.displayName || "Signed in"}</h3>
+        <p>{user.email || "Google account"}</p>
         <button
-          className="auth-close"
-          onClick={onClose}
-          aria-label="Close"
-        >
-          <X size={16} />
-        </button>
-
-        <div className="auth-avatar">
-          {(user.displayName || user.email || "U")
-            .slice(0, 1)
-            .toUpperCase()}
-        </div>
-
-        <strong>
-          {user.displayName || user.email || "User"}
-        </strong>
-
-        <span className="auth-email">
-          {user.email || ""}
-        </span>
-
-        <button
-          className="auth-google"
+          type="button"
+          className="auth-primary"
           onClick={async () => {
             setBusy(true);
-            await logout();
-            setBusy(false);
-            onClose?.();
+            setError("");
+            try {
+              await logout();
+              onClose?.();
+            } catch (err) {
+              setError(err?.message || "Could not sign out.");
+            } finally {
+              setBusy(false);
+            }
           }}
           disabled={busy}
         >
-          <LogOut size={16} />
-          {busy ? "Signing out..." : "Sign Out"}
+          <LogOut size={17} /> {busy ? "SIGNING OUT..." : "SIGN OUT"}
         </button>
+        {error && <small className="auth-error">{error}</small>}
       </div>
     );
   }
 
   return (
-    <div className="auth-popover">
-      <button
-        className="auth-close"
-        onClick={onClose}
-        aria-label="Close"
-      >
-        <X size={16} />
+    <div className={`auth-panel ${embedded ? "embedded" : ""}`}>
+      <div className="auth-status-chip">ACCOUNT</div>
+      <h3>Save your learning list.</h3>
+      <p>Sign in once and every enrolled course stays connected to your account.</p>
+      <button type="button" className="auth-primary" onClick={handleGoogle} disabled={busy}>
+        <LogIn size={17} /> {busy ? "OPENING GOOGLE..." : "CONTINUE WITH GOOGLE"}
       </button>
-
-      <span className="section-kicker">ACCOUNT</span>
-
-      <h3>Sign in to enroll.</h3>
-
-      <p>
-        Your enrolled courses will be linked to your account.
-      </p>
-
-      <button
-        className="auth-google"
-        onClick={handleGoogle}
-        disabled={busy}
-      >
-        <LogIn size={16} />
-        {busy ? "Opening Google..." : "Continue with Google"}
-      </button>
-
-      {error && (
-        <small className="auth-error">
-          {error}
-        </small>
-      )}
+      {error && <small className="auth-error">{error}</small>}
     </div>
   );
 }
