@@ -1,36 +1,20 @@
-# Sayeed Courses Hub — Phase 5
+# Sayeed Courses Hub — Reference UI rebuild
 
-Firebase setup-readiness phase.
+This rebuild keeps the existing Firebase + Firestore enrollment architecture but changes the catalogue UI to follow the visual method from the reference screenshots: handwritten-style typography, rounded panels, large search, sort control, category sheet, FAQ sheet, course shelf/cart interaction, and mobile-first course cards.
 
-## Phase 5 includes
-- Everything from Phase 4
-- More reliable Next.js dynamic course-page architecture
-- Graceful behavior when Firebase environment variables are missing
-- Firebase setup status in the account panel
-- `/setup` visual Firebase onboarding checklist
-- Cleaner deployment configuration guidance
-- Shared Firestore security rules
-- Google Authentication foundation retained
-- Real enrollment foundation retained
+## Important Firebase fix
+The previous `lib/firebase.js` checked environment variables with `process.env[key]`. Next.js does not inline dynamic `process.env` lookups in the client bundle, so the app could incorrectly report **Firebase Setup** even when all six Vercel variables were present.
 
-## Firebase setup order
-1. Create a Firebase project.
-2. Register a Web App.
-3. Enable Google Authentication.
-4. Create Cloud Firestore.
-5. Copy the Web App config into Vercel Environment Variables.
-6. Add your Vercel domain to Firebase Authentication → Authorized domains.
-7. Publish `firestore.rules`.
-8. Redeploy.
+This version uses explicit `process.env.NEXT_PUBLIC_FIREBASE_*` references and then checks those values.
 
-## Environment variable names
-See `.env.example`.
+After uploading to GitHub, create a fresh Vercel deployment after the six Production environment variables are present.
 
-## Security
-Never put Firebase Admin SDK private keys or service-account JSON into the frontend project or GitHub.
+## Course links
+Each course has a `telegramUrl` field in `lib/courses.js`. Add each private Telegram learning link there before launch. Empty links intentionally show a safe message instead of opening a broken URL.
 
-## Local development
+## Local commands
 ```bash
 npm install
-npm run dev
+npm run build
+npm run start
 ```
