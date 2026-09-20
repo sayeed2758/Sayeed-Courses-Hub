@@ -1,8 +1,8 @@
- "use client";
+"use client";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowLeft, BookOpen, LogIn, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, BookOpen, LogIn } from "lucide-react";
 import { useAuth } from "../providers";
 import { getUserEnrollments } from "../../lib/enrollment";
 import { getCourseById } from "../../lib/courses";
@@ -20,6 +20,7 @@ export default function EnrolledPage() {
     async function load() {
       if (authLoading) return;
       if (!user) {
+        setItems([]);
         setLoading(false);
         return;
       }
@@ -36,61 +37,51 @@ export default function EnrolledPage() {
     return () => { alive = false; };
   }, [user, authLoading]);
 
-  if (authLoading || loading) {
-    return <main className="simple-page"><div className="loading-box">Loading your courses…</div></main>;
-  }
-
   return (
-    <main className="simple-page">
-      <header className="simple-header">
-        <Link href="/" className="back-link"><ArrowLeft size={18} /> Back</Link>
-        <div className="detail-brand"><span className="detail-brand-dot" /> SAYEED COURSES HUB</div>
+    <main className="reference-shell enrolled-shell">
+      <header className="site-header">
+        <Link href="/" className="back-home"><ArrowLeft size={19} /> Back</Link>
+        <Link href="/" className="brand-lockup">
+          <span className="brand-logo">S</span>
+          <span className="brand-text"><strong>SAYEED COURSES</strong><small>YOUR NEXT SKILL STARTS HERE</small></span>
+        </Link>
         <span />
       </header>
 
-      <section className="enrolled-page-head">
-        <span className="section-kicker">YOUR SPACE</span>
-        <h1>My Enrolled Courses</h1>
-        <p>Courses saved to your Sayeed Courses Hub account.</p>
+      <section className="page-heading-new">
+        <span className="hero-kicker">YOUR NEXT CHAPTER</span>
+        <h1>My enrolled courses.</h1>
+        <p>Everything you saved with your Sayeed Courses account.</p>
       </section>
 
-      {!user ? (
-        <div className="account-empty">
-          <LogIn size={28} />
+      {authLoading || loading ? (
+        <div className="page-empty"><span>Loading your courses...</span></div>
+      ) : !user ? (
+        <div className="page-empty">
+          <LogIn size={29} />
           <h2>Sign in to see your courses</h2>
           <p>Enrollment is linked to your Google account.</p>
-          <button className="detail-study account-button" onClick={() => setAuthOpen(true)}>
-            SIGN IN <LogIn size={17} />
-          </button>
+          <button type="button" className="modal-primary" onClick={() => setAuthOpen(true)}>SIGN IN</button>
         </div>
       ) : error ? (
-        <div className="account-empty">
-          <h2>Couldn&apos;t load courses</h2>
-          <p>{error}</p>
-        </div>
+        <div className="page-empty"><h2>Couldn&apos;t load courses</h2><p>{error}</p></div>
       ) : items.length === 0 ? (
-        <div className="account-empty">
-          <BookOpen size={28} />
-          <h2>No enrolled courses yet</h2>
-          <p>Open a course and tap Enroll to save it here.</p>
-          <Link href="/" className="detail-study account-button">EXPLORE COURSES <ArrowLeft size={17} /></Link>
+        <div className="page-empty">
+          <BookOpen size={29} />
+          <h2>Your shelf is empty</h2>
+          <p>Go back to the catalogue and tap ENROLL on a course.</p>
+          <Link href="/" className="modal-primary">EXPLORE COURSES</Link>
         </div>
       ) : (
-        <div className="enrolled-list">
+        <div className="enrolled-grid-new">
           {items.map((item) => {
             const course = getCourseById(item.courseId);
             if (!course) return null;
             return (
-              <Link href={`/course/${course.id}`} className="enrolled-row" key={item.id}>
-                <div className={`enrolled-thumb mini-art ${course.tone}`}>
-                  <span>{course.category}</span><strong>{course.badge}</strong>
-                </div>
-                <div className="enrolled-copy">
-                  <span>{course.category} • {course.meta}</span>
-                  <h2>{course.title}</h2>
-                  <small>Enrolled course</small>
-                </div>
-                <Sparkles size={18} />
+              <Link className="enrolled-card-new" href={`/course/${course.id}`} key={item.id}>
+                <div className={`learning-thumb ${course.tone}`}><span>{course.category}</span></div>
+                <div><small>{course.category}</small><h2>{course.title}</h2><span>Enrolled course</span></div>
+                <ArrowUpRight size={18} />
               </Link>
             );
           })}
@@ -98,8 +89,13 @@ export default function EnrolledPage() {
       )}
 
       {authOpen && (
-        <div className="auth-overlay">
-          <AuthPanel onClose={() => setAuthOpen(false)} />
+        <div className="modal-backdrop">
+          <div className="modal-sheet auth-modal">
+            <button className="modal-close" type="button" onClick={() => setAuthOpen(false)} aria-label="Close">×</button>
+            <span className="section-kicker">ACCOUNT</span>
+            <h2>Your account</h2>
+            <AuthPanel embedded onClose={() => setAuthOpen(false)} />
+          </div>
         </div>
       )}
     </main>
