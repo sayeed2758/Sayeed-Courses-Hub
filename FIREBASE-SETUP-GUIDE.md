@@ -21,3 +21,7 @@
 The previous client bundle used a dynamic environment lookup (`process.env[key]`). Next.js only statically inlines public environment variables when they are referenced by their explicit names. The new `lib/firebase.js` uses explicit references, so the browser can see the same values that Vercel injects at build time.
 
 Never put a Firebase Admin SDK private key or service-account JSON into this frontend project or GitHub.
+
+
+## Google sign-in on Vercel
+Open Firebase Console → Authentication → Settings → Authorized domains and add your production Vercel hostname (for this project: `sayeed-courses-hubb.vercel.app`). Firebase documents that the website domain must be in Authorized domains for authentication to work.

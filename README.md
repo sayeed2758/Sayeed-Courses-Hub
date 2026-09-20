@@ -18,4 +18,3 @@ npm install
 npm run build
 npm run start
 ```
-Vercel Git connection updated.
