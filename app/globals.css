@@ -1561,3 +1561,139 @@ body::after {
       linear-gradient(180deg, rgba(0,0,0,.44) 0%, rgba(0,0,0,.10) 45%, rgba(0,0,0,.58) 100%);
   }
 }
+
+
+/* =========================================================
+   PHASE 6 — PREMIUM FINISH / MICRO-INTERACTIONS
+   Safe additive overrides. Existing functionality untouched.
+   ========================================================= */
+:root {
+  --phase6-line: rgba(255,255,255,.13);
+  --phase6-soft-line: rgba(255,255,255,.085);
+  --phase6-lime: #bfff72;
+  --phase6-lime-soft: rgba(191,255,114,.16);
+  --phase6-shadow: 0 18px 44px rgba(0,0,0,.22);
+}
+
+/* Global interaction language */
+a, button, input { transition: border-color .18s ease, background .18s ease, box-shadow .18s ease, transform .18s ease, color .18s ease, opacity .18s ease; }
+button:focus-visible, a:focus-visible, input:focus-visible {
+  outline: 2px solid rgba(191,255,114,.78);
+  outline-offset: 3px;
+}
+
+/* Header: crisp, soft-square controls */
+.header-pill, .header-icon {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035), 0 10px 24px rgba(0,0,0,.14);
+}
+.header-pill:hover, .header-icon:hover {
+  transform: translateY(-1px);
+  border-color: rgba(191,255,114,.28);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.045), 0 14px 30px rgba(0,0,0,.20);
+}
+.header-pill:active, .header-icon:active { transform: translateY(0) scale(.97); }
+.header-icon.telegram:hover {
+  color: #74f2c2;
+  border-color: rgba(94,241,194,.30);
+  box-shadow: inset 0 0 0 1px rgba(94,241,194,.08), 0 14px 30px rgba(0,0,0,.20);
+}
+.cart-button span {
+  box-shadow: 0 0 0 3px rgba(8,10,9,.82), 0 7px 18px rgba(160,255,85,.22);
+}
+
+/* Search + sort feel responsive, not oversized */
+.search-box-large { box-shadow: inset 0 1px 0 rgba(255,255,255,.035), var(--phase6-shadow); }
+.search-box-large:focus-within {
+  border-color: rgba(191,255,114,.32);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 0 0 3px rgba(191,255,114,.055), 0 20px 44px rgba(0,0,0,.20);
+}
+.sort-button:active, .category-trigger:active { transform: translateY(1px); }
+.sort-button:hover, .category-trigger:hover {
+  background: linear-gradient(180deg, rgba(29,35,31,.98), rgba(14,19,16,.98));
+}
+
+/* Course cards: cleaner depth and touch feedback */
+.course-card {
+  position: relative;
+  border-color: var(--phase6-line);
+  box-shadow: 0 22px 52px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.025);
+}
+.course-card::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,.025), transparent 24%);
+}
+.course-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(191,255,114,.24);
+  box-shadow: 0 28px 64px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.03);
+}
+.course-cover-link { overflow: hidden; }
+.course-cover { transition: transform .34s ease, filter .34s ease; }
+.course-card:hover .course-cover { filter: saturate(1.04); }
+
+/* Buttons: premium, compact press states */
+.enroll-button, .study-button {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 10px 22px rgba(0,0,0,.12);
+}
+.enroll-button:hover:not(:disabled) {
+  border-color: rgba(191,255,114,.24);
+  background: #18221b;
+  color: #dffff0;
+}
+.enroll-button.is-enrolled:hover:not(:disabled) {
+  color: #1e2c10;
+  background: #c8ff7b;
+}
+.study-button:hover:not(.is-disabled) {
+  color: #13220c;
+  filter: saturate(1.06) brightness(1.03);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.32), 0 13px 28px rgba(176,255,92,.13);
+}
+.enroll-button:active:not(:disabled), .study-button:active:not(.is-disabled) { transform: scale(.985); }
+
+/* Small metadata hierarchy */
+.category-chip { background: rgba(255,255,255,.025); }
+.category-chip:hover { border-color: rgba(191,255,114,.20); color: #d5f1ca; }
+.course-index { letter-spacing: .04em; }
+.cover-badge { box-shadow: 0 7px 18px rgba(255,208,92,.15); }
+.cover-watermark { pointer-events: none; user-select: none; }
+
+/* Notices remain compact instead of expanding the card abruptly */
+.card-notice {
+  border-color: var(--phase6-soft-line);
+  background: rgba(255,255,255,.025);
+}
+.card-notice.success { border-color: rgba(126,241,179,.18); background: rgba(126,241,179,.035); }
+
+/* Modals: subtle glass layer */
+.modal-backdrop {
+  background: rgba(0,0,0,.62);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.modal-sheet {
+  box-shadow: 0 34px 90px rgba(0,0,0,.52), inset 0 1px 0 rgba(255,255,255,.035);
+}
+.modal-sheet button:hover { transform: translateY(-1px); }
+.modal-sheet button:active { transform: translateY(0) scale(.985); }
+
+/* Featured section + footer */
+.feature-strip { box-shadow: 0 24px 58px rgba(0,0,0,.20), inset 0 1px 0 rgba(255,255,255,.025); }
+.featured-card { transition: transform .18s ease, border-color .18s ease, background .18s ease; }
+.featured-card:hover { transform: translateY(-1px); }
+.site-footer { opacity: .92; }
+
+/* Keep the two course actions together on small phones: compact reference geometry. */
+@media (max-width: 500px) {
+  .course-actions { grid-template-columns: 1fr 1fr; gap: 7px; }
+  .enroll-button, .study-button { min-height: 46px; padding-inline: 8px; font-size: 13.5px; }
+  .action-lock { width: 21px; height: 21px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .course-card, .course-cover, .header-pill, .header-icon, .enroll-button, .study-button, .featured-card { transition: none !important; }
+}
