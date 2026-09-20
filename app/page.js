@@ -37,7 +37,14 @@ function CourseArtwork({ course }) {
   return (
     <div className={`course-cover ${course.tone}`}>
       {course.thumbnailUrl ? (
-        <img className="cover-thumbnail" src={course.thumbnailUrl} alt="" loading="lazy" />
+        <img
+          className="cover-thumbnail"
+          src={course.thumbnailUrl}
+          alt=""
+          loading={course.number === 1 ? "eager" : "lazy"}
+          fetchPriority={course.number === 1 ? "high" : "auto"}
+          decoding="async"
+        />
       ) : null}
       <div className="cover-grid" />
       <div className="cover-orb orb-one" />
@@ -243,23 +250,48 @@ export default function Home() {
   const categoryCounts = useMemo(() => getCategoryCounts(catalogueCourses), [catalogueCourses]);
 
   const filteredCourses = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
+    const tokens = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
     const result = catalogueCourses.filter((course) => {
       const categoryMatch = selectedCategory === "All" || course.category === selectedCategory;
-      const queryMatch = !normalized || [
+      if (!categoryMatch) return false;
+
+      const searchBlob = [
+        course.id,
+        course.number,
         course.title,
+        course.artTitle,
         course.category,
         course.meta,
-        course.description
-      ].some((value) => value.toLowerCase().includes(normalized));
-      return categoryMatch && queryMatch;
+        course.badge,
+        course.description,
+        course.instructor,
+        course.duration,
+        course.lessons,
+        course.resources,
+        course.language
+      ].join(" ").toLowerCase();
+
+      const queryMatch = !tokens.length || tokens.every((token) => searchBlob.includes(token));
+      return queryMatch;
     });
 
     if (sort === "az") return [...result].sort((a, b) => a.title.localeCompare(b.title));
-    if (sort === "category") return [...result].sort((a, b) => a.category.localeCompare(b.category));
+    if (sort === "za") return [...result].sort((a, b) => b.title.localeCompare(a.title));
+    if (sort === "category") return [...result].sort((a, b) => a.category.localeCompare(b.category) || a.title.localeCompare(b.title));
+    if (sort === "oldest") return [...result].sort((a, b) => Number(a.number) - Number(b.number));
     if (sort === "newest") return [...result].sort((a, b) => Number(b.number) - Number(a.number));
     return [...result].sort((a, b) => Number(a.number) - Number(b.number));
   }, [catalogueCourses, query, selectedCategory, sort]);
+
+  const filtersActive = Boolean(query.trim()) || selectedCategory !== "All" || sort !== "recommended";
+
+  function clearFilters() {
+    setQuery("");
+    setSelectedCategory("All");
+    setSort("recommended");
+    setSortOpen(false);
+    setCategoryOpen(false);
+  }
 
   const featuredCourses = catalogueCourses.filter((course) => course.featured);
   const enrolledCourses = enrolledIds
@@ -271,7 +303,7 @@ export default function Home() {
     setSortOpen(false);
     setCategoryOpen(false);
     try {
-      const latest = await loadCatalogueCourses();
+      const latest = await loadCatalogueCourses({ force: true });
       if (latest.length) setCatalogueCourses(latest);
     } finally {
       setQuery("");
@@ -330,6 +362,8 @@ export default function Home() {
         <div className="search-box-large">
           <Search size={24} />
           <input
+            type="search"
+            inputMode="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search course by name or # number..."
@@ -343,23 +377,31 @@ export default function Home() {
         </div>
 
         <div className="sort-wrap">
-          <button className="sort-button" type="button" onClick={() => setSortOpen((open) => !open)}>
+          <button className="sort-button" type="button" aria-expanded={sortOpen} aria-haspopup="listbox" onClick={() => setSortOpen((open) => !open)}>
             <span><span className="sort-symbol">↕</span> Sort courses</span>
             <ChevronDown size={19} className={sortOpen ? "rotate" : ""} />
           </button>
           {sortOpen && (
-            <div className="sort-menu">
+            <div className="sort-menu" role="listbox" aria-label="Sort courses">
               {[
                 ["recommended", "Recommended"],
-                ["newest", "Newest"],
+                ["newest", "Newest first"],
+                ["oldest", "Oldest first"],
                 ["az", "A — Z"],
+                ["za", "Z — A"],
                 ["category", "Category"]
               ].map(([value, label]) => (
-                <button key={value} type="button" className={sort === value ? "selected" : ""} onClick={() => { setSort(value); setSortOpen(false); }}>
+                <button key={value} type="button" role="option" aria-selected={sort === value} className={sort === value ? "selected" : ""} onClick={() => { setSort(value); setSortOpen(false); }}>
                   {label}{sort === value && <span>✓</span>}
                 </button>
               ))}
             </div>
+          )}
+        </div>
+        <div className={`filter-summary ${filtersActive ? "has-filters" : ""}`} aria-live="polite">
+          <span>Search, filter and sort your catalogue instantly.</span>
+          {filtersActive && (
+            <button type="button" onClick={clearFilters}>Clear filters</button>
           )}
         </div>
       </section>
@@ -367,7 +409,7 @@ export default function Home() {
       <section className="catalogue-section" id="courses">
         <div className="catalogue-head">
           <span>{filteredCourses.length} {filteredCourses.length === 1 ? "course" : "courses"} to explore</span>
-          <button className="category-trigger" type="button" onClick={() => setCategoryOpen(true)}>
+          <button className="category-trigger" type="button" aria-expanded={categoryOpen} aria-haspopup="dialog" onClick={() => setCategoryOpen(true)}>
             {selectedCategory === "All" ? "All Courses" : selectedCategory}
             <ChevronDown size={17} />
           </button>
@@ -390,7 +432,7 @@ export default function Home() {
             <Search size={28} />
             <h2>No courses found</h2>
             <p>Try another search or reset the category filter.</p>
-            <button type="button" onClick={() => { setQuery(""); setSelectedCategory("All"); }}>Reset filters</button>
+            <button type="button" onClick={clearFilters}>Reset filters</button>
           </div>
         )}
       </section>

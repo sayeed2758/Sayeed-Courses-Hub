@@ -3253,3 +3253,106 @@ body.modal-open {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* =========================
+   BATCH 4 — PHASE 13/14/15
+   Search/filter/sort pro + performance + final QA
+   ========================= */
+.filter-summary {
+  min-height: 28px;
+  margin-top: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #737b74;
+  font: 500 11px/1.4 var(--ui, Inter), sans-serif;
+  letter-spacing: .02em;
+}
+.filter-summary.has-filters {
+  color: #9dac9d;
+}
+.filter-summary button {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(186,255,114,.16);
+  border-radius: 999px;
+  color: #baf272;
+  background: rgba(186,255,114,.035);
+  font: 600 10px/1 var(--ui, Inter), sans-serif;
+  letter-spacing: .06em;
+}
+.filter-summary button:hover {
+  border-color: rgba(186,255,114,.30);
+  background: rgba(186,255,114,.07);
+}
+.search-box-large input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+.search-box-large input:focus-visible,
+.sort-button:focus-visible,
+.category-trigger:focus-visible,
+.header-icon:focus-visible,
+.header-pill:focus-visible,
+.enroll-button:focus-visible,
+.study-button:focus-visible,
+.filter-summary button:focus-visible {
+  outline: 2px solid rgba(186,255,114,.58);
+  outline-offset: 3px;
+}
+.sort-menu[role="listbox"] button[role="option"] {
+  position: relative;
+}
+.sort-menu[role="listbox"] button[role="option"][aria-selected="true"]::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.sort-menu[role="listbox"] button[role="option"][aria-selected="true"] {
+  gap: 4px;
+}
+.course-card {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 520px;
+}
+.course-cover img.cover-thumbnail {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  transform: translateZ(0);
+}
+.learning-thumb img,
+.detail-cover img.cover-thumbnail {
+  transform: translateZ(0);
+}
+
+@media (max-width: 760px) {
+  .filter-summary {
+    align-items: flex-start;
+    padding: 0 2px;
+    font-size: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin,
+  .rotate,
+  .course-card,
+  .course-cover,
+  .header-icon,
+  .header-pill,
+  .sort-button,
+  .category-trigger,
+  .enroll-button,
+  .study-button {
+    animation: none !important;
+    transition: none !important;
+  }
+}
