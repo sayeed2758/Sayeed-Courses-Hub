@@ -170,6 +170,25 @@ export default function Home() {
   const [expandedFaq, setExpandedFaq] = useState(null);
 
   useEffect(() => {
+    const modalOpen = categoryOpen || faqOpen || menuOpen || learningOpen || authOpen;
+    document.body.classList.toggle("modal-open", modalOpen);
+
+    if (!modalOpen) return undefined;
+
+    function handleEscape(event) {
+      if (event.key !== "Escape") return;
+      setCategoryOpen(false);
+      setFaqOpen(false);
+      setMenuOpen(false);
+      setLearningOpen(false);
+      setAuthOpen(false);
+    }
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [categoryOpen, faqOpen, menuOpen, learningOpen, authOpen]);
+
+  useEffect(() => {
     let alive = true;
 
     async function loadEnrollments() {
