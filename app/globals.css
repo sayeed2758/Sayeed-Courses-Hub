@@ -3557,3 +3557,100 @@ body.modal-open {
   }
   .action-lock { width: 20px; height: 20px; }
 }
+
+
+/* ================================================================
+   PREMIUM MOTION BACKGROUND — A + B + C HYBRID
+   A: elegant flow | B: subtle mesh depth | C: aurora light sweep
+   ================================================================ */
+html { background: #030504; }
+body {
+  position: relative;
+  isolation: isolate;
+  overflow-x: hidden;
+  background: #030504;
+}
+
+body > * { position: relative; z-index: 1; }
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: -16%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,.34), rgba(0,0,0,.40)),
+    url('/green-wave-background.jpg') center 58% / cover no-repeat;
+  opacity: .92;
+  filter: saturate(.94) contrast(1.02) brightness(.78);
+  transform: translate3d(-1.5%, 0, 0) scale(1.06);
+  animation: premiumWaveDrift 24s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: -22%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(42% 28% at 18% 64%, rgba(33, 255, 163, .11), transparent 68%),
+    radial-gradient(34% 24% at 76% 42%, rgba(37, 221, 146, .085), transparent 70%),
+    radial-gradient(26% 20% at 52% 80%, rgba(0, 128, 82, .07), transparent 72%);
+  mix-blend-mode: screen;
+  opacity: .78;
+  transform: translate3d(0, 0, 0) scale(1.04);
+  animation: premiumAuroraFloat 18s ease-in-out infinite alternate,
+             premiumAuroraPulse 10s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+@keyframes premiumWaveDrift {
+  0%   { transform: translate3d(-1.8%, 0, 0) scale(1.06) rotate(-.25deg); }
+  50%  { transform: translate3d(1.2%, -1.1%, 0) scale(1.075) rotate(.15deg); }
+  100% { transform: translate3d(2.3%, .8%, 0) scale(1.06) rotate(.35deg); }
+}
+
+@keyframes premiumAuroraFloat {
+  0%   { transform: translate3d(-2%, 1%, 0) scale(1.02); }
+  50%  { transform: translate3d(1%, -1.5%, 0) scale(1.06); }
+  100% { transform: translate3d(2%, 1%, 0) scale(1.03); }
+}
+
+@keyframes premiumAuroraPulse {
+  0%, 100% { opacity: .58; }
+  50%      { opacity: .86; }
+}
+
+/* Keep the content surfaces comfortably readable over the animated layers. */
+.main-shell,
+.reference-shell {
+  position: relative;
+  z-index: 2;
+}
+
+/* Slightly calmer motion and darker treatment for small screens. */
+@media (max-width: 640px) {
+  body::before {
+    inset: -12%;
+    opacity: .84;
+    background-position: center 60%;
+    animation-duration: 30s;
+  }
+
+  body::after {
+    inset: -18%;
+    opacity: .62;
+    animation-duration: 24s, 13s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before,
+  body::after {
+    animation: none !important;
+    transform: none !important;
+  }
+}
