@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Check, Database, ExternalLink, Plus, Save, ShieldCheck, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, Database, ExternalLink, Eye, Image as ImageIcon, Plus, Save, Search, ShieldCheck, Trash2, X } from "lucide-react";
 import { useAuth } from "../providers";
 import { courses as staticCourses } from "../../lib/courses";
 import { loadCatalogueCourses } from "../../lib/catalogue";
@@ -78,6 +78,8 @@ export default function AdminPage() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [listQuery, setListQuery] = useState("");
+  const [listFilter, setListFilter] = useState("all");
 
   async function loadItems() {
     setLoading(true);
@@ -119,7 +121,17 @@ export default function AdminPage() {
     return () => { alive = false; };
   }, [user, authLoading]);
 
-  const sortedItems = useMemo(() => [...items].sort((a, b) => Number(a.number) - Number(b.number)), [items]);
+  const sortedItems = useMemo(() => {
+    const q = listQuery.trim().toLowerCase();
+    const filtered = items.filter((course) => {
+      const statusMatch = listFilter === "all" || (listFilter === "active" ? course.status === "active" : course.status === "inactive");
+      if (!statusMatch) return false;
+      if (!q) return true;
+      return [course.id, course.number, course.title, course.category, course.badge, course.meta]
+        .join(" ").toLowerCase().includes(q);
+    });
+    return [...filtered].sort((a, b) => Number(a.number) - Number(b.number));
+  }, [items, listQuery, listFilter]);
 
   function chooseCourse(course) {
     setEditor(toEditor(course));
@@ -260,6 +272,7 @@ export default function AdminPage() {
       <section className="admin-layout">
         <form className="admin-form" onSubmit={handleSave}>
           <div className="admin-form-head"><span>COURSE EDITOR</span><strong>{editor.id ? `#${editor.number}` : "NEW"}</strong></div>
+          <div className="admin-section-title">BASICS</div>
 
           <label>Course ID<input value={editor.id} onChange={(e) => setEditor({ ...editor, id: e.target.value })} placeholder="e.g. 7" /></label>
           <div className="admin-field-grid">
@@ -273,12 +286,22 @@ export default function AdminPage() {
           </div>
           <label>Meta label<input value={editor.meta} onChange={(e) => setEditor({ ...editor, meta: e.target.value })} /></label>
           <label>Description<textarea rows="3" value={editor.description} onChange={(e) => setEditor({ ...editor, description: e.target.value })} /></label>
+
+          <div className="admin-section-title">PRESENTATION</div>
           <div className="admin-field-grid">
             <label>Tone<select value={editor.tone} onChange={(e) => setEditor({ ...editor, tone: e.target.value })}><option>blue</option><option>purple</option><option>teal</option><option>orange</option></select></label>
             <label>Status<select value={editor.status} onChange={(e) => setEditor({ ...editor, status: e.target.value })}><option value="active">Active</option><option value="inactive">Coming Soon</option></select></label>
           </div>
-          <label>Thumbnail URL<input value={editor.thumbnailUrl} onChange={(e) => setEditor({ ...editor, thumbnailUrl: e.target.value })} placeholder="https://..." /></label>
-          <label>Telegram study URL<input value={editor.telegramUrl} onChange={(e) => setEditor({ ...editor, telegramUrl: e.target.value })} placeholder="https://t.me/..." /></label>
+          <label>Thumbnail URL<input value={editor.thumbnailUrl} onChange={(e) => setEditor({ ...editor, thumbnailUrl: e.target.value })} placeholder="https://..." inputMode="url" /></label>
+          {editor.thumbnailUrl ? (
+            <div className="admin-thumb-preview">
+              <div className="admin-thumb-preview-head"><span><ImageIcon size={14} /> THUMBNAIL PREVIEW</span><a href={editor.thumbnailUrl} target="_blank" rel="noreferrer"><Eye size={14} /> OPEN</a></div>
+              <div className="admin-thumb-frame"><img src={editor.thumbnailUrl} alt="Course thumbnail preview" onError={(event) => { event.currentTarget.style.display = "none"; event.currentTarget.parentElement?.classList.add("is-error"); }} /></div>
+            </div>
+          ) : null}
+          <label>Telegram study URL<input value={editor.telegramUrl} onChange={(e) => setEditor({ ...editor, telegramUrl: e.target.value })} placeholder="https://t.me/..." inputMode="url" /></label>
+          <div className="admin-link-hint">Use a direct image URL for thumbnails. <span>16:9</span> recommended.</div>
+          <div className="admin-section-title">COURSE DETAILS</div>
           <div className="admin-field-grid">
             <label>Instructor<input value={editor.instructor} onChange={(e) => setEditor({ ...editor, instructor: e.target.value })} /></label>
             <label>Duration<input value={editor.duration} onChange={(e) => setEditor({ ...editor, duration: e.target.value })} /></label>
@@ -291,19 +314,29 @@ export default function AdminPage() {
           <label>Overview<textarea rows="4" value={editor.overview} onChange={(e) => setEditor({ ...editor, overview: e.target.value })} /></label>
           <label>What you&apos;ll learn <small>Comma separated</small><textarea rows="3" value={editor.learnText || ""} onChange={(e) => setEditor({ ...editor, learnText: e.target.value })} /></label>
           <label>Modules <small>Comma separated</small><textarea rows="3" value={editor.modulesText || ""} onChange={(e) => setEditor({ ...editor, modulesText: e.target.value })} /></label>
+          <div className="admin-section-title">DISCOVERY</div>
           <label className="admin-check"><input type="checkbox" checked={Boolean(editor.featured)} onChange={(e) => setEditor({ ...editor, featured: e.target.checked })} /> Feature this course on the home page</label>
           <button className="modal-primary admin-save" type="submit" disabled={busy}><Save size={17} /> {busy ? "SAVING..." : "SAVE COURSE"}</button>
         </form>
 
         <section className="admin-list-panel">
           <div className="admin-form-head"><span>LIVE CATALOGUE</span><strong>{loading ? "..." : sortedItems.length}</strong></div>
+          <div className="admin-list-tools">
+            <div className="admin-list-search"><Search size={15} /><input value={listQuery} onChange={(e) => setListQuery(e.target.value)} placeholder="Search courses..." /><button type="button" onClick={() => setListQuery("")} aria-label="Clear search" disabled={!listQuery}><X size={14} /></button></div>
+            <div className="admin-filter-row">
+              {[['all','ALL'],['active','ACTIVE'],['inactive','COMING SOON']].map(([value,label]) => <button key={value} type="button" className={listFilter===value?"active":""} onClick={() => setListFilter(value)}>{label}</button>)}
+            </div>
+          </div>
           <div className="admin-course-list">
             {loading ? <div className="admin-list-empty">Loading catalogue...</div> : sortedItems.map((course) => (
               <article className="admin-course-row" key={course.id}>
-                <div><span>#{course.number} · {course.category}</span><strong>{course.title}</strong><small>{course.status === "active" ? "ACTIVE" : "COMING SOON"}</small></div>
+                <div className="admin-course-row-main">
+                  {course.thumbnailUrl ? <img className="admin-course-thumb" src={course.thumbnailUrl} alt="" loading="lazy" /> : <div className="admin-course-thumb admin-course-thumb-empty"><ImageIcon size={16} /></div>}
+                  <div><span>#{course.number} · {course.category}</span><strong>{course.title}</strong><small>{course.status === "active" ? "ACTIVE" : "COMING SOON"}{course.featured ? " · FEATURED" : ""}</small></div>
+                </div>
                 <div className="admin-row-actions">
                   <button type="button" className="admin-edit" onClick={() => chooseCourse(course)}>EDIT</button>
-                  <button type="button" className="admin-delete" onClick={() => handleDelete(course)} disabled={busy}><Trash2 size={15} /></button>
+                  <button type="button" className="admin-delete" onClick={() => handleDelete(course)} disabled={busy} aria-label={`Delete ${course.title}`}><Trash2 size={15} /></button>
                 </div>
               </article>
             ))}
