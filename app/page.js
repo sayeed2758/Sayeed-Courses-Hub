@@ -44,7 +44,7 @@ function CourseArtwork({ course }) {
         <span>{course.meta}</span>
         <strong>{course.artTitle}</strong>
       </div>
-      <div className="cover-watermark">SAYEED</div>
+      <div className="cover-watermark">Made With 💓 By Shahid</div>
     </div>
   );
 }

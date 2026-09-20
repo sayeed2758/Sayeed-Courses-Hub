@@ -1245,3 +1245,92 @@ body,
     font-size: 15px;
   }
 }
+
+
+/* =========================
+   PHASE 3 — HERO / SEARCH / SORT + COURSE WATERMARK
+   ========================= */
+.hero-block {
+  padding: 58px 0 22px;
+}
+.hero-block h1 {
+  margin-top: 12px;
+  font-size: clamp(50px, 8.5vw, 78px);
+  line-height: .93;
+  letter-spacing: -.055em;
+}
+.hero-block > p { max-width: 650px; }
+.search-box-large {
+  min-height: 66px;
+  margin-top: 22px;
+  padding: 0 19px;
+  border-radius: 20px;
+}
+.search-box-large > svg { width: 22px; height: 22px; }
+.search-box-large input { font-size: 18px; }
+.sort-wrap { margin-top: 10px; }
+.sort-button {
+  min-height: 54px;
+  padding: 0 17px;
+  border-radius: 17px;
+  font-size: 16px;
+}
+.sort-menu { top: calc(100% + 6px); border-radius: 16px; }
+.catalogue-section { padding-top: 8px; }
+.catalogue-head {
+  padding: 20px 0 13px;
+}
+.catalogue-head > span { font-size: 13px; }
+.category-trigger {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 15px;
+  font-size: 15px;
+}
+.cover-watermark {
+  right: 14px;
+  bottom: 12px;
+  max-width: 58%;
+  color: rgba(255,255,255,.18);
+  font-size: clamp(15px, 2.7vw, 23px);
+  letter-spacing: .01em;
+  white-space: nowrap;
+  text-transform: none;
+  transform: rotate(-7deg);
+  text-shadow: 0 6px 20px rgba(0,0,0,.28);
+  pointer-events: none;
+}
+@media (max-width: 760px) {
+  .hero-block { padding: 48px 2px 18px; }
+  .hero-block h1 { font-size: 54px; }
+  .search-box-large { min-height: 66px; margin-top: 20px; }
+  .sort-button { min-height: 53px; }
+}
+@media (max-width: 560px) {
+  .hero-block { padding-top: 46px; }
+  .hero-block h1 { font-size: 50px; }
+  .search-box-large { min-height: 64px; padding: 0 16px; border-radius: 19px; }
+  .search-box-large input { font-size: 16px; }
+  .sort-button { min-height: 52px; border-radius: 16px; font-size: 16px; }
+  .catalogue-head {
+    align-items: center;
+    flex-direction: row;
+    gap: 10px;
+    padding: 19px 0 13px;
+  }
+  .catalogue-head > span { font-size: 12px; }
+  .category-trigger {
+    width: auto;
+    justify-content: center;
+    flex: 0 0 auto;
+    min-height: 43px;
+    padding: 0 12px;
+    font-size: 14px;
+  }
+  .cover-watermark {
+    right: 11px;
+    bottom: 10px;
+    font-size: 13px;
+    max-width: 72%;
+  }
+}
