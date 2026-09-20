@@ -1,57 +1,70 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { ArrowLeft, ArrowUpRight, BookOpen, LogIn } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, ArrowUpRight, BookOpen, LogIn, RefreshCw } from "lucide-react";
 import { useAuth } from "../providers";
 import { getUserEnrollments } from "../../lib/enrollment";
-import { getCourseById } from "../../lib/courses";
+import { loadCatalogueCourses, getCourseFromList } from "../../lib/catalogue";
 import AuthPanel from "../../components/AuthPanel";
 
 export default function EnrolledPage() {
   const { user, authLoading } = useAuth();
   const [items, setItems] = useState([]);
+  const [catalogue, setCatalogue] = useState([]);
   const [loading, setLoading] = useState(true);
   const [authOpen, setAuthOpen] = useState(false);
   const [error, setError] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    let alive = true;
-    async function load() {
-      if (authLoading) return;
+  async function loadShelf(showRefresh = false) {
+    if (showRefresh) setRefreshing(true);
+    setError("");
+    try {
+      const liveCatalogue = await loadCatalogueCourses();
+      setCatalogue(liveCatalogue);
       if (!user) {
         setItems([]);
-        setLoading(false);
         return;
       }
-      try {
-        const rows = await getUserEnrollments(user.uid);
-        if (alive) setItems(rows);
-      } catch (err) {
-        if (alive) setError(err?.message || "Unable to load enrolled courses.");
-      } finally {
-        if (alive) setLoading(false);
-      }
+      const rows = await getUserEnrollments(user.uid);
+      setItems(rows);
+    } catch (err) {
+      setError(err?.message || "Unable to load enrolled courses.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-    load();
-    return () => { alive = false; };
+  }
+
+  useEffect(() => {
+    if (authLoading) return;
+    loadShelf();
+    // user/authLoading are intentionally the source of truth for this page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, authLoading]);
+
+  const visibleCourses = useMemo(() => items
+    .map((item) => ({ item, course: getCourseFromList(catalogue, item.courseId) }))
+    .filter((row) => row.course), [items, catalogue]);
 
   return (
     <main className="reference-shell enrolled-shell">
       <header className="site-header">
         <Link href="/" className="back-home"><ArrowLeft size={19} /> Back</Link>
-        <Link href="/" className="brand-lockup">
-          <span className="brand-logo">S</span>
-          <span className="brand-text"><strong>SAYEED COURSES</strong><small>YOUR NEXT SKILL STARTS HERE</small></span>
+        <Link href="/" className="brand-lockup" aria-label="Sayeed Courses Hub home">
+          <span className="brand-logo"><img src="/shahid-logo.png" alt="Shahid" /></span>
+          <span className="brand-text"><strong>Sayeed Courses Hub</strong><small>Your Next Skills Start Here</small></span>
         </Link>
-        <span />
+        <button className="header-icon shelf-refresh" type="button" onClick={() => loadShelf(true)} aria-label="Refresh enrolled courses" disabled={refreshing}>
+          <RefreshCw size={19} className={refreshing ? "spin" : ""} />
+        </button>
       </header>
 
       <section className="page-heading-new">
         <span className="hero-kicker">YOUR NEXT CHAPTER</span>
         <h1>My enrolled courses.</h1>
-        <p>Everything you saved with your Sayeed Courses account.</p>
+        <p>Everything you saved with your Sayeed Courses account, ready to continue.</p>
       </section>
 
       {authLoading || loading ? (
@@ -64,8 +77,12 @@ export default function EnrolledPage() {
           <button type="button" className="modal-primary" onClick={() => setAuthOpen(true)}>SIGN IN</button>
         </div>
       ) : error ? (
-        <div className="page-empty"><h2>Couldn&apos;t load courses</h2><p>{error}</p></div>
-      ) : items.length === 0 ? (
+        <div className="page-empty">
+          <h2>Couldn&apos;t load courses</h2>
+          <p>{error}</p>
+          <button type="button" className="modal-primary" onClick={() => loadShelf(true)}>TRY AGAIN</button>
+        </div>
+      ) : visibleCourses.length === 0 ? (
         <div className="page-empty">
           <BookOpen size={29} />
           <h2>Your shelf is empty</h2>
@@ -74,22 +91,21 @@ export default function EnrolledPage() {
         </div>
       ) : (
         <div className="enrolled-grid-new">
-          {items.map((item) => {
-            const course = getCourseById(item.courseId);
-            if (!course) return null;
-            return (
-              <Link className="enrolled-card-new" href={`/course/${course.id}`} key={item.id}>
-                <div className={`learning-thumb ${course.tone}`}><span>{course.category}</span></div>
-                <div><small>{course.category}</small><h2>{course.title}</h2><span>Enrolled course</span></div>
-                <ArrowUpRight size={18} />
-              </Link>
-            );
-          })}
+          {visibleCourses.map(({ item, course }) => (
+            <Link className="enrolled-card-new" href={`/course/${course.id}`} key={item.id}>
+              <div className={`learning-thumb ${course.tone}`}>
+                {course.thumbnailUrl ? <img src={course.thumbnailUrl} alt="" /> : null}
+                <span>{course.category}</span>
+              </div>
+              <div><small>{course.category}</small><h2>{course.title}</h2><span>Enrolled course</span></div>
+              <ArrowUpRight size={18} />
+            </Link>
+          ))}
         </div>
       )}
 
       {authOpen && (
-        <div className="modal-backdrop">
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
           <div className="modal-sheet auth-modal">
             <button className="modal-close" type="button" onClick={() => setAuthOpen(false)} aria-label="Close">×</button>
             <span className="section-kicker">ACCOUNT</span>
