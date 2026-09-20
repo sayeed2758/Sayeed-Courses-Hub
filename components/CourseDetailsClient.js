@@ -21,7 +21,7 @@ import { loadCatalogueCourses, getCourseFromList } from "../lib/catalogue";
 function CourseArtwork({ course }) {
   return (
     <div className={`course-cover detail-cover ${course.tone}`}>
-      {course.thumbnailUrl ? <img className="cover-thumbnail" src={course.thumbnailUrl} alt="" /> : null}
+      {course.thumbnailUrl ? <img className="cover-thumbnail" src={course.thumbnailUrl} alt="" loading="eager" fetchPriority="high" decoding="async" /> : null}
       <div className="cover-grid" />
       <div className="cover-orb orb-one" />
       <div className="cover-orb orb-two" />
