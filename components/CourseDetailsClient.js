@@ -72,9 +72,11 @@ export default function CourseDetailsClient({ course }) {
     <main className="reference-shell detail-shell-new">
       <header className="site-header detail-site-header">
         <Link href="/" className="back-home"><ArrowLeft size={19} /> Back</Link>
-        <Link href="/" className="brand-lockup">
-          <span className="brand-logo"><span className="brand-logo-s">S</span><Sparkles className="brand-logo-spark" size={13} /></span>
-          <span className="brand-text"><strong>SAYEED COURSES</strong><small>YOUR NEXT SKILL STARTS HERE</small></span>
+        <Link href="/" className="brand-lockup" aria-label="Sayeed Courses Hub home">
+          <span className="brand-logo">
+            <img src="/shahid-logo.png" alt="Shahid" />
+          </span>
+          <span className="brand-text"><strong>Sayeed Courses Hub</strong><small>Your Next Skills Start Here</small></span>
         </Link>
         <Link href="/" className="back-home"><span className="back-desktop-label">Courses</span> <ArrowUpRight size={19} /></Link>
       </header>
