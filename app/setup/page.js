@@ -9,7 +9,8 @@ export default function FirebaseSetupPage() {
     ["Create Firestore", "Build → Firestore Database → create the database and finish setup."],
     ["Add all six environment variables", "Vercel → Settings → Environment Variables. Add the six NEXT_PUBLIC_FIREBASE_* names exactly as written."],
     ["Add your Vercel domain", "Firebase → Authentication → Settings → Authorized domains → add your production Vercel domain."],
-    ["Publish firestore.rules", "Use the rules file included in this ZIP after reviewing it."],
+    ["Publish firestore.rules", "Use the rules file included in this ZIP after reviewing it. It keeps enrollments private and limits course edits to approved admins."],
+    ["Provision your admin", "After your first Google sign-in, copy your Google UID from the Admin Panel message and create Firestore collection admins with a document whose ID is that UID. Add role: admin."],
     ["Create a fresh deployment", "Environment variables are injected at build time, so redeploy after every variable change."]
   ];
 
@@ -21,7 +22,7 @@ export default function FirebaseSetupPage() {
         <span />
       </header>
       <section className="page-heading-new">
-        <span className="hero-kicker"><ShieldCheck size={15} /> PHASE 5</span>
+        <span className="hero-kicker"><ShieldCheck size={15} /> FIREBASE + ADMIN SETUP</span>
         <h1>Firebase setup.</h1>
         <p>Phone-friendly setup notes for Google sign-in and Firestore enrollment.</p>
         <a className="modal-primary inline-button" href="https://console.firebase.google.com/" target="_blank" rel="noreferrer">OPEN FIREBASE CONSOLE <ExternalLink size={16} /></a>
