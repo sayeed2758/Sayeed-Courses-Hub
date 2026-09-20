@@ -3460,3 +3460,100 @@ body.modal-open {
 @media (min-width: 900px) {
   .admin-list-panel { max-height: calc(100vh - 28px); overflow: auto; }
 }
+
+
+/* =========================
+   BUTTON REFRESH — compact 3D course actions
+   Reference-inspired green ENROLL + gold LET'S STUDY
+   ========================= */
+.course-actions {
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.enroll-button,
+.study-button {
+  position: relative;
+  min-height: 46px;
+  padding: 0 14px;
+  border-radius: 13px;
+  font: 800 13px/1 var(--ui, Inter), sans-serif;
+  letter-spacing: .015em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border-width: 1px;
+  border-style: solid;
+  box-shadow: 0 4px 0 rgba(0,0,0,.32), 0 10px 20px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.28);
+  transform: translateY(0);
+}
+
+.enroll-button {
+  color: #071f15;
+  border-color: #0b9a70;
+  background: linear-gradient(180deg, #19d49a 0%, #0fbd86 100%);
+}
+
+.enroll-button.is-enrolled {
+  color: #13250d;
+  border-color: #75bd3a;
+  background: linear-gradient(180deg, #a8ea52 0%, #7fd33c 100%);
+}
+
+.study-button {
+  color: #241a03;
+  border-color: #d69f13;
+  background: linear-gradient(180deg, #ffd84d 0%, #f5bb19 100%);
+  box-shadow: 0 4px 0 #9d7011, 0 10px 20px rgba(245,187,25,.16), inset 0 1px 0 rgba(255,255,255,.42);
+}
+
+.enroll-button:hover:not(:disabled) {
+  color: #061b12;
+  border-color: #11b982;
+  background: linear-gradient(180deg, #2ee1a9 0%, #14c993 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 5px 0 #087a59, 0 14px 24px rgba(15,189,134,.18), inset 0 1px 0 rgba(255,255,255,.32);
+}
+
+.enroll-button.is-enrolled:hover:not(:disabled) {
+  color: #11210b;
+  border-color: #85d94a;
+  background: linear-gradient(180deg, #b7f263 0%, #8adf48 100%);
+  box-shadow: 0 5px 0 #5f9f2d, 0 14px 24px rgba(144,223,70,.18), inset 0 1px 0 rgba(255,255,255,.34);
+}
+
+.study-button:hover:not(.is-disabled) {
+  color: #201600;
+  filter: none;
+  transform: translateY(-1px);
+  background: linear-gradient(180deg, #ffdf67 0%, #f8c52c 100%);
+  box-shadow: 0 5px 0 #9d7011, 0 14px 24px rgba(245,187,25,.20), inset 0 1px 0 rgba(255,255,255,.48);
+}
+
+.enroll-button:active:not(:disabled),
+.study-button:active:not(.is-disabled) {
+  transform: translateY(3px);
+}
+
+.enroll-button:active:not(:disabled) {
+  box-shadow: 0 1px 0 #087a59, 0 5px 10px rgba(15,189,134,.10), inset 0 1px 0 rgba(255,255,255,.22);
+}
+
+.study-button:active:not(.is-disabled) {
+  box-shadow: 0 1px 0 #9d7011, 0 5px 10px rgba(245,187,25,.10), inset 0 1px 0 rgba(255,255,255,.30);
+}
+
+.action-lock {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 500px) {
+  .course-actions { gap: 8px; }
+  .enroll-button,
+  .study-button {
+    min-height: 44px;
+    padding-inline: 10px;
+    border-radius: 12px;
+    font-size: 12px;
+  }
+  .action-lock { width: 20px; height: 20px; }
+}
