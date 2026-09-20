@@ -3356,3 +3356,107 @@ body.modal-open {
     transition: none !important;
   }
 }
+
+/* =========================
+   BATCH 5 — ADMIN CONTROL CENTER POLISH
+   ========================= */
+.admin-section-title {
+  margin: 8px 0 0;
+  padding-top: 4px;
+  color: #708077;
+  font: 800 9px/1 var(--ui);
+  letter-spacing: .16em;
+}
+.admin-link-hint {
+  margin-top: -4px;
+  color: #66736a;
+  font: 500 9px/1.45 var(--ui);
+}
+.admin-link-hint span {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  color: #c8ecb5;
+  background: rgba(186,255,114,.05);
+  border: 1px solid rgba(186,255,114,.10);
+}
+.admin-thumb-preview {
+  display: grid;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 16px;
+  background: rgba(255,255,255,.02);
+}
+.admin-thumb-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #829088;
+  font: 700 8px/1 var(--ui);
+  letter-spacing: .08em;
+}
+.admin-thumb-preview-head span, .admin-thumb-preview-head a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.admin-thumb-preview-head a { color: #c7f2ab; text-decoration: none; }
+.admin-thumb-frame {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.07);
+  background: #0e1410;
+}
+.admin-thumb-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.admin-thumb-frame.is-error::after {
+  content: "Thumbnail preview unavailable";
+  position: absolute; inset: 0; display: grid; place-items: center;
+  color: #8d9991; font: 600 10px/1.4 var(--ui);
+}
+.admin-list-tools {
+  display: grid; gap: 8px; margin: 0 0 12px;
+}
+.admin-list-search {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px;
+  min-height: 42px; padding: 0 11px; border: 1px solid rgba(255,255,255,.08);
+  border-radius: 13px; background: rgba(255,255,255,.025); color: #718078;
+}
+.admin-list-search input {
+  width: 100%; border: 0; outline: 0; background: transparent; color: #eaf0ea;
+  font: 500 11px/1.2 var(--ui);
+}
+.admin-list-search input::placeholder { color: #68746d; }
+.admin-list-search button {
+  width: 28px; height: 28px; border: 0; border-radius: 9px; background: transparent; color: #7c877f;
+}
+.admin-list-search button:disabled { opacity: .35; }
+.admin-filter-row { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.admin-filter-row::-webkit-scrollbar { display:none; }
+.admin-filter-row button {
+  flex: 0 0 auto; min-height: 31px; padding: 0 9px; border: 1px solid rgba(255,255,255,.08);
+  border-radius: 999px; background: rgba(255,255,255,.025); color: #8f9b93;
+  font: 700 8px/1 var(--ui); letter-spacing: .08em;
+}
+.admin-filter-row button.active { border-color: rgba(186,255,114,.24); color: #d5f7c0; background: rgba(186,255,114,.055); }
+.admin-course-row-main { min-width: 0; display: grid; grid-template-columns: 54px minmax(0,1fr); align-items: center; gap: 10px; }
+.admin-course-thumb { width: 54px; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 10px; border: 1px solid rgba(255,255,255,.07); background: #0d120f; }
+.admin-course-thumb-empty { display: grid; place-items: center; color: #556159; }
+.admin-course-row .admin-course-row-main > div { min-width: 0; display: grid; gap: 4px; }
+.admin-row-actions { align-self: center; }
+@media (max-width: 760px) {
+  .admin-form, .admin-list-panel { padding: 15px; border-radius: 21px; }
+  .admin-toolbar { position: sticky; top: 8px; z-index: 20; padding: 6px; margin-inline: -4px; border: 1px solid rgba(255,255,255,.05); border-radius: 16px; background: rgba(4,8,5,.82); backdrop-filter: blur(12px); }
+  .admin-toolbar .modal-primary, .admin-toolbar .admin-secondary { flex: 1 1 0; justify-content: center; }
+  .admin-form-head { min-height: 34px; }
+  .admin-course-row { grid-template-columns: 1fr; }
+  .admin-row-actions { justify-content: flex-end; }
+}
+@media (min-width: 900px) {
+  .admin-list-panel { max-height: calc(100vh - 28px); overflow: auto; }
+}
