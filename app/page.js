@@ -240,10 +240,10 @@ export default function Home() {
     <main className="reference-shell">
       <header className="site-header">
         <Link href="/" className="brand-lockup">
-          <span className="brand-logo"><span className="brand-logo-s">S</span><Sparkles className="brand-logo-spark" size={13} /></span>
+          <span className="brand-logo"><span className="brand-logo-s">SC</span><span className="brand-logo-dot" /></span>
           <span className="brand-text">
-            <strong>SAYEED COURSES</strong>
-            <small>YOUR NEXT SKILL STARTS HERE</small>
+            <strong>Sayeed Courses Hub</strong>
+            <small>Your Next Skills Start Here</small>
           </span>
         </Link>
 
@@ -270,8 +270,6 @@ export default function Home() {
       <section className="hero-block">
         <span className="hero-kicker">CURIOUS MINDS. ENDLESS POSSIBILITIES.</span>
         <h1>Find your next <em>skill.</em></h1>
-        <p>Explore focused courses, simple learning paths and resources built to keep your study journey moving.</p>
-
         <div className="search-box-large">
           <Search size={24} />
           <input
