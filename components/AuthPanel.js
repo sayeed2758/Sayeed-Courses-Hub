@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { LogIn, LogOut } from "lucide-react";
+import { BookOpen, LogIn, LogOut } from "lucide-react";
 import { useAuth } from "../app/providers";
 
 export default function AuthPanel({ onClose, embedded = false }) {
@@ -24,7 +24,7 @@ export default function AuthPanel({ onClose, embedded = false }) {
   }
 
   if (authLoading) {
-    return <div className={`auth-panel ${embedded ? "embedded" : ""}`}>Checking account...</div>;
+    return <div className={`auth-panel ${embedded ? "embedded" : ""}`}><div className="auth-loading-line" />Checking account...</div>;
   }
 
   if (configError && !user) {
@@ -32,38 +32,50 @@ export default function AuthPanel({ onClose, embedded = false }) {
       <div className={`auth-panel ${embedded ? "embedded" : ""}`}>
         <div className="auth-status-chip">FIREBASE SETUP</div>
         <h3>Connect your account</h3>
-        <p>The website is ready for Google sign-in, but the Firebase environment variables are not available in this deployment.</p>
+        <p>The website is ready for Google sign-in, but this deployment is reporting a Firebase configuration problem.</p>
         <Link href="/setup" className="auth-secondary" onClick={onClose}>OPEN SETUP GUIDE</Link>
+        <small className="auth-help-note">After changing Vercel variables, create a fresh deployment.</small>
       </div>
     );
   }
 
   if (user) {
+    const initials = (user.displayName || user.email || "U").slice(0, 1).toUpperCase();
     return (
       <div className={`auth-panel ${embedded ? "embedded" : ""}`}>
-        <div className="auth-avatar">{(user.displayName || user.email || "U").slice(0, 1).toUpperCase()}</div>
+        {user.photoURL ? (
+          <img className="auth-avatar-image" src={user.photoURL} alt="" />
+        ) : (
+          <div className="auth-avatar">{initials}</div>
+        )}
+        <div className="auth-status-chip signed-in">GOOGLE ACCOUNT CONNECTED</div>
         <h3>{user.displayName || "Signed in"}</h3>
         <p>{user.email || "Google account"}</p>
-        <button
-          type="button"
-          className="auth-primary"
-          onClick={async () => {
-            setBusy(true);
-            setError("");
-            try {
-              await logout();
-              onClose?.();
-            } catch (err) {
-              setError(err?.message || "Could not sign out.");
-            } finally {
-              setBusy(false);
-            }
-          }}
-          disabled={busy}
-        >
-          <LogOut size={17} /> {busy ? "SIGNING OUT..." : "SIGN OUT"}
-        </button>
-        {error && <small className="auth-error">{error}</small>}
+        <div className="auth-account-actions">
+          <Link href="/enrolled" className="auth-primary auth-link-button" onClick={onClose}>
+            <BookOpen size={17} /> MY COURSES
+          </Link>
+          <button
+            type="button"
+            className="auth-secondary auth-secondary-button"
+            onClick={async () => {
+              setBusy(true);
+              setError("");
+              try {
+                await logout();
+                onClose?.();
+              } catch (err) {
+                setError(err?.message || "Could not sign out.");
+              } finally {
+                setBusy(false);
+              }
+            }}
+            disabled={busy}
+          >
+            <LogOut size={17} /> {busy ? "SIGNING OUT..." : "SIGN OUT"}
+          </button>
+        </div>
+        {error && <small className="auth-error" aria-live="polite">{error}</small>}
       </div>
     );
   }
@@ -76,7 +88,7 @@ export default function AuthPanel({ onClose, embedded = false }) {
       <button type="button" className="auth-primary" onClick={handleGoogle} disabled={busy}>
         <LogIn size={17} /> {busy ? "OPENING GOOGLE..." : "CONTINUE WITH GOOGLE"}
       </button>
-      {error && <small className="auth-error">{error}</small>}
+      {error && <small className="auth-error" aria-live="polite">{error}</small>}
     </div>
   );
 }
