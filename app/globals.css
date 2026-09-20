@@ -1500,3 +1500,64 @@ body,
     font-size: 13px;
   }
 }
+
+/* =========================
+   PHASE 5 — SELECTED BACKGROUND
+   ========================= */
+html,
+body {
+  background: #000;
+}
+
+body {
+  position: relative;
+  min-height: 100vh;
+  isolation: isolate;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background-image: url('/green-wave-background.jpg');
+  background-repeat: no-repeat;
+  background-position: center 38%;
+  background-size: cover;
+  opacity: .34;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,.36) 0%, rgba(0,0,0,.12) 46%, rgba(0,0,0,.52) 100%);
+}
+
+.reference-shell {
+  position: relative;
+  z-index: 1;
+}
+
+.modal-backdrop,
+.modal-sheet {
+  z-index: 60;
+}
+
+@media (max-width: 760px) {
+  body::before {
+    background-position: center 36%;
+    background-size: auto 100vh;
+    opacity: .38;
+  }
+
+  body::after {
+    background:
+      linear-gradient(180deg, rgba(0,0,0,.44) 0%, rgba(0,0,0,.10) 45%, rgba(0,0,0,.58) 100%);
+  }
+}
