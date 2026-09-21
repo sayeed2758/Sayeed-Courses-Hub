@@ -3799,3 +3799,58 @@ body::after {
   .admin-lesson-fields label:nth-child(2) { grid-column:1 / -1; }
   .admin-lesson-actions { justify-content:flex-start; }
 }
+
+/* =========================
+   PHASE 3 — ENROLLMENT + VIDEO PROGRESS
+   ========================= */
+.enrolled-card-new {
+  display: grid;
+  gap: 10px;
+}
+.enrolled-card-main {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 76px minmax(0,1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,.075);
+  border-radius: 18px;
+  background: rgba(255,255,255,.025);
+  color: inherit;
+  text-decoration: none;
+}
+.enrolled-card-main:hover {
+  border-color: rgba(186,255,114,.18);
+}
+.enrolled-remove-button {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid rgba(255,125,125,.14);
+  border-radius: 12px;
+  background: rgba(255,125,125,.035);
+  color: #ffb1b1;
+  font: 700 10px/1 var(--ui, Inter), sans-serif;
+  letter-spacing: .06em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.enrolled-remove-button:disabled { opacity: .55; }
+.video-progress-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 7px;
+  color: rgba(207,226,211,.68);
+  font-size: 10px;
+}
+.video-progress-note.success { color: #baf272; }
+@media (max-width: 560px) {
+  .enrolled-card-main {
+    grid-template-columns: 68px minmax(0,1fr) auto;
+    padding: 10px;
+    gap: 10px;
+  }
+}

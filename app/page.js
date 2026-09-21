@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import AuthPanel from "../components/AuthPanel";
 import { useAuth } from "./providers";
-import { enrollInCourse, getUserEnrollments } from "../lib/enrollment";
+import { enrollInCourse, getUserEnrollments, unenrollFromCourse } from "../lib/enrollment";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -93,11 +93,28 @@ function CourseCard({ course, isEnrolled, onEnrolled, onNeedsAuth }) {
       return;
     }
 
+    if (isEnrolled) {
+      const confirmed = window.confirm(`Remove “${course.title}” from My Courses?`);
+      if (!confirmed) return;
+      setBusy(true);
+      setNotice("");
+      try {
+        await unenrollFromCourse(user.uid, course.id);
+        onEnrolled(course.id, false);
+        setNotice("UNENROLLED");
+      } catch (error) {
+        setNotice(error?.message || "Could not remove this course.");
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
     setBusy(true);
     setNotice("");
     try {
       const result = await enrollInCourse(user.uid, course.id);
-      onEnrolled(course.id);
+      onEnrolled(course.id, true);
       setNotice(result.alreadyEnrolled ? "ALREADY" : "ENROLLED");
     } catch (error) {
       setNotice(error?.message || "Enrollment failed. Please try again.");
@@ -128,10 +145,10 @@ function CourseCard({ course, isEnrolled, onEnrolled, onNeedsAuth }) {
             className={`enroll-button ${isEnrolled ? "is-enrolled" : ""}`}
             type="button"
             onClick={handleEnroll}
-            disabled={!active || busy || isEnrolled}
+            disabled={!active || busy}
           >
-            <span className="action-lock">{isEnrolled ? "✓" : "+"}</span>
-            {busy ? "SAVING..." : isEnrolled ? "ENROLLED" : "ENROLL"}
+            <span className="action-lock">{isEnrolled ? "×" : "+"}</span>
+            {busy ? "WORKING..." : isEnrolled ? "UNENROLL" : "ENROLL"}
           </button>
 
           <Link href={`/course/${course.id}`} className={`study-button ${!active ? "is-disabled" : ""}`} aria-disabled={!active}>
@@ -151,13 +168,19 @@ function CourseCard({ course, isEnrolled, onEnrolled, onNeedsAuth }) {
             <span className="notice-link">SAVED</span>
           </div>
         )}
+        {notice === "UNENROLLED" && (
+          <div className="card-notice success">
+            <span>Course removed from My Courses.</span>
+            <span className="notice-link">REMOVED</span>
+          </div>
+        )}
         {notice === "ALREADY" && (
           <div className="card-notice success">
             <span>This course is already enrolled.</span>
             <span className="notice-link">SAVED</span>
           </div>
         )}
-        {notice && !["SIGN_IN", "ENROLLED", "ALREADY"].includes(notice) && (
+        {notice && !["SIGN_IN", "ENROLLED", "ALREADY", "UNENROLLED"].includes(notice) && (
           <div className="card-notice error"><span>{notice}</span></div>
         )}
 
@@ -319,8 +342,12 @@ export default function Home() {
     document.getElementById("courses")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  function markEnrolled(id) {
-    setEnrolledIds((current) => current.includes(String(id)) ? current : [...current, String(id)]);
+  function markEnrolled(id, next = true) {
+    setEnrolledIds((current) => {
+      const key = String(id);
+      if (next) return current.includes(key) ? current : [...current, key];
+      return current.filter((item) => item !== key);
+    });
   }
 
   return (
