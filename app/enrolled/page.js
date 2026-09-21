@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ArrowUpRight, BookOpen, LogIn, RefreshCw } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, BookOpen, LogIn, RefreshCw, Trash2 } from "lucide-react";
 import { useAuth } from "../providers";
-import { getUserEnrollments } from "../../lib/enrollment";
+import { getUserEnrollments, unenrollFromCourse } from "../../lib/enrollment";
 import { loadCatalogueCourses, getCourseFromList } from "../../lib/catalogue";
 import AuthPanel from "../../components/AuthPanel";
 
@@ -16,6 +16,7 @@ export default function EnrolledPage() {
   const [authOpen, setAuthOpen] = useState(false);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [removingId, setRemovingId] = useState("");
 
   async function loadShelf(showRefresh = false) {
     if (showRefresh) setRefreshing(true);
@@ -43,6 +44,22 @@ export default function EnrolledPage() {
     // user/authLoading are intentionally the source of truth for this page.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, authLoading]);
+
+  async function handleUnenroll(item, course) {
+    const confirmed = window.confirm(`Remove “${course.title}” from My Courses?`);
+    if (!confirmed) return;
+
+    setRemovingId(String(item.id));
+    setError("");
+    try {
+      await unenrollFromCourse(user.uid, course.id);
+      setItems((current) => current.filter((row) => row.id !== item.id));
+    } catch (err) {
+      setError(err?.message || "Could not remove this course.");
+    } finally {
+      setRemovingId("");
+    }
+  }
 
   const visibleCourses = useMemo(() => items
     .map((item) => ({ item, course: getCourseFromList(catalogue, item.courseId) }))
@@ -92,14 +109,25 @@ export default function EnrolledPage() {
       ) : (
         <div className="enrolled-grid-new">
           {visibleCourses.map(({ item, course }) => (
-            <Link className="enrolled-card-new" href={`/course/${course.id}`} key={item.id}>
-              <div className={`learning-thumb ${course.tone}`}>
-                {course.thumbnailUrl ? <img src={course.thumbnailUrl} alt="" loading="lazy" decoding="async" /> : null}
-                <span>{course.category}</span>
-              </div>
-              <div><small>{course.category}</small><h2>{course.title}</h2><span>Enrolled course</span></div>
-              <ArrowUpRight size={18} />
-            </Link>
+            <article className="enrolled-card-new" key={item.id}>
+              <Link className="enrolled-card-main" href={`/course/${course.id}`}>
+                <div className={`learning-thumb ${course.tone}`}>
+                  {course.thumbnailUrl ? <img src={course.thumbnailUrl} alt="" loading="lazy" decoding="async" /> : null}
+                  <span>{course.category}</span>
+                </div>
+                <div><small>{course.category}</small><h2>{course.title}</h2><span>Enrolled course</span></div>
+                <ArrowUpRight size={18} />
+              </Link>
+              <button
+                type="button"
+                className="enrolled-remove-button"
+                onClick={() => handleUnenroll(item, course)}
+                disabled={removingId === String(item.id)}
+              >
+                <Trash2 size={15} />
+                {removingId === String(item.id) ? "REMOVING..." : "REMOVE COURSE"}
+              </button>
+            </article>
           ))}
         </div>
       )}
