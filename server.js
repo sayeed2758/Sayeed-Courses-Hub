@@ -44,10 +44,8 @@ const COURSE_CACHE_TTL_MS = 30_000;
 // request in the standard download path. Larger relay chunks reduce request overhead
 // compared with the previous 512 KiB setting while preserving range streaming.
 const STREAM_CHUNK_SIZE = 1024 * 1024;
-// Short browser-side cache for signed playback URLs. This reduces repeated
-// origin requests when the same lesson is refreshed or briefly seeked back.
-// The signed URL itself still expires independently.
 const STREAM_CACHE_SECONDS = 120;
+const STREAM_PARALLEL_REQUESTS = 2;
 
 const stringSession = new StringSession("");
 
@@ -733,83 +731,124 @@ async function streamTelegramVideo(req, res, message) {
     );
   }
 
-  // Streaming-friendly headers. The playback URL is already short-lived and
-  // signed, so a small private browser cache is used to reduce repeated origin
-  // requests after refresh or short seeks.
   res.setHeader(
     "Cache-Control",
     `private, max-age=${STREAM_CACHE_SECONDS}, must-revalidate`
   );
   res.setHeader("Content-Disposition", "inline");
   res.setHeader("X-Content-Type-Options", "nosniff");
-  // Disable buffering in reverse proxies that honor this header.
   res.setHeader("X-Accel-Buffering", "no");
 
-  // Reduce TCP latency and keep the connection alive while Telegram relays
-  // a large lesson to a mobile browser.
   if (res.socket) {
     res.socket.setNoDelay(true);
     res.socket.setKeepAlive(true, 10_000);
   }
 
-  // Start the HTTP response immediately so mobile browsers can begin buffering
-  // while Telegram data is being relayed.
   if (typeof res.flushHeaders === "function") {
     res.flushHeaders();
   }
 
   const CHUNK_SIZE = STREAM_CHUNK_SIZE;
-  const offset = bigInt(start);
   const requestedBytes = contentLength;
-  const chunkCount = Math.ceil(
-    requestedBytes / CHUNK_SIZE
+  const chunkCount = Math.ceil(requestedBytes / CHUNK_SIZE);
+  const parallelRequests = Math.min(
+    STREAM_PARALLEL_REQUESTS,
+    Math.max(chunkCount, 1)
   );
 
   console.log(
     `Streaming message ${message.id}: ${start}-${end}/${fileSize}`
   );
-  console.log(`Chunks required: ${chunkCount}`);
+  console.log(
+    `Chunks required: ${chunkCount}; parallel Telegram requests: ${parallelRequests}`
+  );
+
+  // Controlled read-ahead: keep at most two 1 MiB Telegram requests in flight.
+  // This lets Render fetch the next chunk while the current chunk is being
+  // delivered to a slower mobile browser, without creating an unbounded buffer.
+  const downloadChunk = async (chunkIndex) => {
+    const chunkStart = start + chunkIndex * CHUNK_SIZE;
+    const remaining = requestedBytes - chunkIndex * CHUNK_SIZE;
+    const expectedLength = Math.min(CHUNK_SIZE, remaining);
+
+    const iterator = tg.iterDownload({
+      file: message.media,
+      offset: bigInt(chunkStart),
+      requestSize: CHUNK_SIZE,
+      chunkSize: CHUNK_SIZE,
+      limit: 1,
+      fileSize: bigInt(fileSize)
+    });
+
+    const pieces = [];
+    for await (const piece of iterator) {
+      pieces.push(piece);
+      if (pieces.reduce((sum, item) => sum + item.length, 0) >= expectedLength) {
+        break;
+      }
+    }
+
+    if (!pieces.length) {
+      throw new Error(`Telegram returned no data for chunk ${chunkIndex}.`);
+    }
+
+    const combined = pieces.length === 1
+      ? pieces[0]
+      : Buffer.concat(pieces);
+
+    return combined.length > expectedLength
+      ? combined.subarray(0, expectedLength)
+      : combined;
+  };
+
+  const inFlight = new Map();
+  let nextChunkToStart = 0;
+
+  const startChunk = (index) => {
+    const promise = downloadChunk(index);
+    inFlight.set(index, promise);
+  };
+
+  while (
+    nextChunkToStart < parallelRequests &&
+    nextChunkToStart < chunkCount
+  ) {
+    startChunk(nextChunkToStart);
+    nextChunkToStart += 1;
+  }
 
   let bytesSent = 0;
 
-  const iterator = tg.iterDownload({
-    file: message.media,
-    offset,
-    requestSize: CHUNK_SIZE,
-    chunkSize: CHUNK_SIZE,
-    limit: chunkCount,
-    fileSize: bigInt(fileSize)
-  });
-
   try {
-    for await (const chunk of iterator) {
+    for (let chunkIndex = 0; chunkIndex < chunkCount; chunkIndex += 1) {
       if (res.destroyed) break;
 
-      const remaining = requestedBytes - bytesSent;
-
-      if (remaining <= 0) break;
-
-      let outputChunk = chunk;
-
-      if (chunk.length > remaining) {
-        outputChunk = chunk.subarray(0, remaining);
+      const promise = inFlight.get(chunkIndex);
+      if (!promise) {
+        throw new Error(`Missing in-flight chunk ${chunkIndex}.`);
       }
+      inFlight.delete(chunkIndex);
+
+      // Start the next Telegram request before writing the current chunk so
+      // there is always a small read-ahead window.
+      if (nextChunkToStart < chunkCount) {
+        startChunk(nextChunkToStart);
+        nextChunkToStart += 1;
+      }
+
+      const outputChunk = await promise;
+
+      if (res.destroyed) break;
 
       const canContinue = res.write(outputChunk);
       bytesSent += outputChunk.length;
 
-      // Respect Node's backpressure instead of allowing large relay buffers
-      // to accumulate on slower mobile connections.
       if (!canContinue && !res.destroyed) {
         await once(res, "drain");
       }
-
-      if (bytesSent >= requestedBytes) break;
     }
   } finally {
-    console.log(
-      `Stream finished: ${bytesSent} bytes`
-    );
+    console.log(`Stream finished: ${bytesSent} bytes`);
   }
 
   if (!res.destroyed) {
@@ -1132,10 +1171,8 @@ app.head("/video", async (req, res) => {
     res.setHeader("Content-Length", fileSize);
     res.setHeader(
       "Cache-Control",
-      `private, max-age=${STREAM_CACHE_SECONDS}, must-revalidate`
+      "private, no-store, no-cache, must-revalidate"
     );
-    res.setHeader("X-Content-Type-Options", "nosniff");
-    res.setHeader("X-Accel-Buffering", "no");
     return res.end();
   } catch (error) {
     res.status(error.statusCode || 500).end();
@@ -1165,12 +1202,10 @@ const server = app.listen(PORT, () => {
     `Video security mode: ${VIDEO_SECURITY_MODE}`
   );
   console.log(
-    `Streaming: ${STREAM_CHUNK_SIZE / (1024 * 1024)} MiB chunks, ${STREAM_CACHE_SECONDS}s private cache`
+    `Streaming: ${STREAM_CHUNK_SIZE / (1024 * 1024)} MiB chunks, ${STREAM_PARALLEL_REQUESTS} parallel requests`
   );
 });
 
-// Keep long video connections alive while avoiding an overly aggressive
-// server-side timeout during slower mobile playback.
 server.keepAliveTimeout = 65_000;
 server.headersTimeout = 70_000;
 server.requestTimeout = 0;
