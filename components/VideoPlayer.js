@@ -159,7 +159,7 @@ export default function VideoPlayer({ course }) {
                 className="secure-video"
                 controls
                 playsInline
-                preload="metadata"
+                preload="auto"
                 controlsList="nodownload"
                 disablePictureInPicture
                 src={playbackUrl}
