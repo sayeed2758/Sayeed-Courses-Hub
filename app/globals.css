@@ -3682,6 +3682,32 @@ body::after {
 .video-now-playing span { font-size:10px; color:#bfff91; text-transform:uppercase; letter-spacing:.14em; }
 .video-now-playing strong { color:#fff; font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .video-now-playing button { flex:none; font-size:10px; padding:8px 10px; }
+.video-start-info {
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+  margin-top:10px;
+  padding:10px 12px;
+  border:1px solid rgba(255,195,80,.16);
+  background:rgba(255,195,80,.055);
+  color:rgba(255,255,255,.64);
+  border-radius:12px;
+  font-size:10.5px;
+  line-height:1.55;
+}
+.video-start-info-icon {
+  flex:none;
+  width:18px;
+  height:18px;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  border:1px solid rgba(255,205,100,.35);
+  color:#ffd777;
+  font-size:11px;
+  font-weight:900;
+  margin-top:1px;
+}
 .video-expiry-note { display:flex; align-items:center; gap:6px; color:rgba(255,255,255,.47); font-size:10px; margin-top:8px; }
 .video-inline-error, .video-error-state { display:flex; align-items:center; gap:8px; margin-top:10px; padding:11px 12px; border:1px solid rgba(255,120,120,.18); background:rgba(255,80,80,.06); color:#ffb7b7; border-radius:12px; font-size:12px; }
 .video-error-state { margin-top:0; flex-wrap:wrap; }
@@ -3711,6 +3737,7 @@ body::after {
 @media (max-width:600px) {
   .video-learning-panel { padding:14px; border-radius:21px; }
   .video-panel-heading h2 { font-size:28px; }
+  .video-start-info { font-size:10px; }
   .video-now-playing { align-items:flex-start; flex-direction:column; }
   .video-now-playing button { width:100%; justify-content:center; }
   .video-security-badge { font-size:9px; padding:7px 8px; }
