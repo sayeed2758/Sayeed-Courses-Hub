@@ -1,18 +1,17 @@
 {
-  "name": "sayeed-video-lab",
-  "version": "2.0.0",
+  "name": "ezee-course-hub",
+  "version": "1.1.0",
   "private": true,
-  "type": "module",
   "scripts": {
-    "start": "node server.js"
-  },
-  "engines": {
-    "node": ">=22"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
   },
   "dependencies": {
-    "express": "^5.1.0",
-    "firebase-admin": "^13.6.0",
-    "telegram": "^2.26.22",
-    "big-integer": "^1.6.52"
+    "next": "^15.5.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "lucide-react": "^0.468.0",
+    "firebase": "^12.4.0"
   }
 }
