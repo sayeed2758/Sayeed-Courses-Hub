@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, CheckCircle2, LoaderCircle, LockKeyhole, Play, RefreshCw, ShieldCheck } from "lucide-react";
 import { useAuth } from "../app/providers";
 import { getVideoCourseByKey, loadVideoCourses, VIDEO_API_URL } from "../lib/videoApi";
+import { getPublishedVideoLessons } from "../lib/videoLessons";
 
 export default function VideoPlayer({ course }) {
   const { user } = useAuth();
@@ -45,10 +46,35 @@ export default function VideoPlayer({ course }) {
     setLoading(true);
     setError("");
     try {
-      const payload = await loadVideoCourses({ force });
-      setCatalogue(payload);
-      const firstVideo = getVideoCourseByKey(payload, course.videoCourseKey)?.modules?.[0]?.videos?.[0];
-      if (firstVideo && !selectedMessageId) setSelectedMessageId(firstVideo.messageId);
+      // Phase 3: prefer the admin-curated Firestore library. This avoids a
+      // Telegram scan for every student page and lets the admin publish,
+      // rename, reorder and unpublish lessons without editing code.
+      const curatedLessons = await getPublishedVideoLessons(course.id);
+      if (curatedLessons.length > 0) {
+        const moduleMap = new Map();
+        curatedLessons.forEach((lesson) => {
+          if (!moduleMap.has(lesson.module)) moduleMap.set(lesson.module, []);
+          moduleMap.get(lesson.module).push({
+            messageId: lesson.messageId,
+            videoId: lesson.videoId,
+            title: lesson.title
+          });
+        });
+        setCatalogue({
+          success: true,
+          courses: [{
+            course: course.videoCourseKey || course.category,
+            modules: Array.from(moduleMap.entries()).map(([module, videos]) => ({ module, videos }))
+          }]
+        });
+        const firstVideo = curatedLessons[0];
+        if (firstVideo && !selectedMessageId) setSelectedMessageId(firstVideo.messageId);
+      } else {
+        const payload = await loadVideoCourses({ force });
+        setCatalogue(payload);
+        const firstVideo = getVideoCourseByKey(payload, course.videoCourseKey)?.modules?.[0]?.videos?.[0];
+        if (firstVideo && !selectedMessageId) setSelectedMessageId(firstVideo.messageId);
+      }
     } catch (err) {
       setError(err?.message || "Video library could not be loaded.");
     } finally {
@@ -159,7 +185,7 @@ export default function VideoPlayer({ course }) {
                 className="secure-video"
                 controls
                 playsInline
-                preload="auto"
+                preload="metadata"
                 controlsList="nodownload"
                 disablePictureInPicture
                 src={playbackUrl}
