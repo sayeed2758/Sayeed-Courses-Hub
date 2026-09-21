@@ -14,10 +14,10 @@ import {
   X
 } from "lucide-react";
 import AuthPanel from "./AuthPanel";
-import VideoPlayer from "./VideoPlayer";
 import { useAuth } from "../app/providers";
 import { enrollInCourse, getUserEnrollments } from "../lib/enrollment";
 import { loadCatalogueCourses, getCourseFromList } from "../lib/catalogue";
+import VideoPlayer from "./VideoPlayer";
 
 function CourseArtwork({ course }) {
   return (
@@ -128,12 +128,17 @@ export default function CourseDetailsClient({ course: initialCourse, courseId })
 
   function handleStudy() {
     if (!isActive) return;
-    const player = document.getElementById("course-video-player");
-    if (player) {
-      player.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (!user) {
+      setMessage("Sign in with Google to access secure course videos.");
+      setAuthOpen(true);
       return;
     }
-    setMessage(course.videoEnabled ? "Video player is loading. Scroll down to Video Lessons." : "Video lessons are not connected to this course yet.");
+    const target = document.getElementById("course-video-player");
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    setMessage("Video lessons are loading. Please try again in a moment.");
   }
 
   return (
@@ -178,11 +183,11 @@ export default function CourseDetailsClient({ course: initialCourse, courseId })
         </div>
       </section>
 
-      {course.videoEnabled && (
-        <div id="course-video-player" className="course-video-player-anchor">
+      {enrolled && course.videoEnabled ? (
+        <div id="course-video-player" className="course-video-anchor">
           <VideoPlayer course={course} />
         </div>
-      )}
+      ) : null}
 
       <section className="detail-grid-new">
         <div className="detail-panel-new">
