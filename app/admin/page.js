@@ -535,7 +535,7 @@ export default function AdminPage() {
             <label>Tone<select value={editor.tone} onChange={(e) => setEditor({ ...editor, tone: e.target.value })}><option>blue</option><option>purple</option><option>teal</option><option>orange</option></select></label>
             <label>Status<select value={editor.status} onChange={(e) => setEditor({ ...editor, status: e.target.value })}><option value="active">Active</option><option value="inactive">Coming Soon</option></select></label>
           </div>
-          <label>Thumbnail URL<input value={editor.thumbnailUrl} onChange={(e) => setEditor({ ...editor, thumbnailUrl: e.target.value })} placeholder="https://..." inputMode="url" /></label>
+          <label>Thumbnail Direct Image URL<input value={editor.thumbnailUrl} onChange={(e) => setEditor({ ...editor, thumbnailUrl: e.target.value })} placeholder="https://...jpg" inputMode="url" /></label>
           {editor.thumbnailUrl ? (
             <div className="admin-thumb-preview">
               <div className="admin-thumb-preview-head"><span><ImageIcon size={14} /> THUMBNAIL PREVIEW</span><a href={editor.thumbnailUrl} target="_blank" rel="noreferrer"><Eye size={14} /> OPEN</a></div>
@@ -543,7 +543,7 @@ export default function AdminPage() {
             </div>
           ) : null}
           <label>Telegram study URL<input value={editor.telegramUrl} onChange={(e) => setEditor({ ...editor, telegramUrl: e.target.value })} placeholder="https://t.me/..." inputMode="url" /></label>
-          <div className="admin-link-hint">Use a direct image URL for thumbnails. <span>16:9</span> recommended.</div>
+          <div className="admin-link-hint">Paste the <strong>direct image link</strong> (JPG, PNG or WEBP) — not a Google Drive/Instagram page link. <span>16:9</span> recommended.</div>
           <div className="admin-section-title">COURSE DETAILS</div>
           <div className="admin-field-grid">
             <label>Instructor<input value={editor.instructor} onChange={(e) => setEditor({ ...editor, instructor: e.target.value })} /></label>
