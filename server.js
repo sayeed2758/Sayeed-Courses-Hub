@@ -44,6 +44,10 @@ const COURSE_CACHE_TTL_MS = 30_000;
 // request in the standard download path. Larger relay chunks reduce request overhead
 // compared with the previous 512 KiB setting while preserving range streaming.
 const STREAM_CHUNK_SIZE = 1024 * 1024;
+// Short browser-side cache for signed playback URLs. This reduces repeated
+// origin requests when the same lesson is refreshed or briefly seeked back.
+// The signed URL itself still expires independently.
+const STREAM_CACHE_SECONDS = 120;
 
 const stringSession = new StringSession("");
 
@@ -729,11 +733,24 @@ async function streamTelegramVideo(req, res, message) {
     );
   }
 
+  // Streaming-friendly headers. The playback URL is already short-lived and
+  // signed, so a small private browser cache is used to reduce repeated origin
+  // requests after refresh or short seeks.
   res.setHeader(
     "Cache-Control",
-    "private, no-store, no-cache, must-revalidate"
+    `private, max-age=${STREAM_CACHE_SECONDS}, must-revalidate`
   );
-  res.setHeader("Connection", "keep-alive");
+  res.setHeader("Content-Disposition", "inline");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  // Disable buffering in reverse proxies that honor this header.
+  res.setHeader("X-Accel-Buffering", "no");
+
+  // Reduce TCP latency and keep the connection alive while Telegram relays
+  // a large lesson to a mobile browser.
+  if (res.socket) {
+    res.socket.setNoDelay(true);
+    res.socket.setKeepAlive(true, 10_000);
+  }
 
   // Start the HTTP response immediately so mobile browsers can begin buffering
   // while Telegram data is being relayed.
@@ -1115,8 +1132,10 @@ app.head("/video", async (req, res) => {
     res.setHeader("Content-Length", fileSize);
     res.setHeader(
       "Cache-Control",
-      "private, no-store, no-cache, must-revalidate"
+      `private, max-age=${STREAM_CACHE_SECONDS}, must-revalidate`
     );
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Accel-Buffering", "no");
     return res.end();
   } catch (error) {
     res.status(error.statusCode || 500).end();
@@ -1138,11 +1157,20 @@ app.use((req, res) => {
 // START SERVER
 // ==================================================
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(
     `Sayeed Courses Video API running on port ${PORT}`
   );
   console.log(
     `Video security mode: ${VIDEO_SECURITY_MODE}`
   );
+  console.log(
+    `Streaming: ${STREAM_CHUNK_SIZE / (1024 * 1024)} MiB chunks, ${STREAM_CACHE_SECONDS}s private cache`
+  );
 });
+
+// Keep long video connections alive while avoiding an overly aggressive
+// server-side timeout during slower mobile playback.
+server.keepAliveTimeout = 65_000;
+server.headersTimeout = 70_000;
+server.requestTimeout = 0;
