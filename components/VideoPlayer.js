@@ -204,6 +204,11 @@ export default function VideoPlayer({ course }) {
             )}
           </div>
 
+          <div className="video-start-info" role="note">
+            <span className="video-start-info-icon">ℹ</span>
+            <span>Video start hone mein thoda time lag sakta hai, especially large video files ke liye. Please wait while the video starts.</span>
+          </div>
+
           <div className="video-now-playing">
             <div>
               <span>{selectedVideo?.module || "Lesson"}</span>
