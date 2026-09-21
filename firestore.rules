@@ -23,6 +23,15 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+
+    match /videoLessons/{lessonId} {
+      // Lesson metadata is readable only after authentication. Signed playback
+      // URLs are still issued by the backend after enrollment verification.
+      allow read: if request.auth != null;
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
     match /enrollments/{enrollmentId} {
       allow create: if request.auth != null
         && request.resource.data.userId == request.auth.uid
