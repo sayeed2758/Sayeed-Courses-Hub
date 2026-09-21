@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Check, Database, ExternalLink, Eye, Image as ImageIcon, Plus, Save, Search, ShieldCheck, Trash2, X } from "lucide-react";
+import { ArrowLeft, Check, Database, ExternalLink, Eye, Image as ImageIcon, Plus, Save, Search, ShieldCheck, Trash2, X, RefreshCw, Video, UploadCloud, Pencil, EyeOff } from "lucide-react";
 import { useAuth } from "../providers";
 import { courses as staticCourses } from "../../lib/courses";
 import { loadCatalogueCourses } from "../../lib/catalogue";
 import { ensureCatalogueSeeded, isUserAdmin, removeCourse, saveCourse, seedStaticCourses } from "../../lib/admin";
+import { VIDEO_API_URL } from "../../lib/videoApi";
+import { bulkImportVideoLessons, getVideoLessons, removeVideoLesson, saveVideoLesson } from "../../lib/videoLessons";
 
 const emptyCourse = {
   id: "",
@@ -22,6 +24,8 @@ const emptyCourse = {
   featured: false,
   telegramUrl: "",
   thumbnailUrl: "",
+  videoEnabled: false,
+  videoCourseKey: "",
   instructor: "Sayeed Courses Hub",
   duration: "Self-paced",
   lessons: "",
@@ -57,6 +61,8 @@ function cleanForSave(editor) {
     featured: Boolean(editor.featured),
     telegramUrl: editor.telegramUrl.trim(),
     thumbnailUrl: editor.thumbnailUrl.trim(),
+    videoEnabled: Boolean(editor.videoEnabled),
+    videoCourseKey: editor.videoCourseKey.trim(),
     instructor: editor.instructor.trim(),
     duration: editor.duration.trim(),
     lessons: editor.lessons.trim(),
@@ -66,6 +72,241 @@ function cleanForSave(editor) {
     learn: editor.learnText.split(",").map((x) => x.trim()).filter(Boolean),
     modules: editor.modulesText.split(",").map((x) => x.trim()).filter(Boolean)
   };
+}
+
+
+function buildImportedLessons(source, courseId) {
+  const lessons = [];
+  (source.modules || []).forEach((module) => {
+    (module.videos || []).forEach((video, index) => {
+      lessons.push({
+        courseId: String(courseId),
+        sourceCourse: String(source.course || ""),
+        module: String(module.module || "01"),
+        messageId: Number(video.messageId),
+        videoId: String(video.videoId || ""),
+        title: String(video.title || "Untitled lesson"),
+        order: index + 1,
+        published: true
+      });
+    });
+  });
+  return lessons;
+}
+
+function VideoManager({ courses, admin }) {
+  const [telegramCatalogue, setTelegramCatalogue] = useState(null);
+  const [selectedTargetId, setSelectedTargetId] = useState("");
+  const [sourceTargets, setSourceTargets] = useState({});
+  const [managedLessons, setManagedLessons] = useState([]);
+  const [videoLoading, setVideoLoading] = useState(false);
+  const [videoBusy, setVideoBusy] = useState(false);
+  const [videoMessage, setVideoMessage] = useState("");
+  const [videoError, setVideoError] = useState("");
+
+  const activeCourses = useMemo(
+    () => courses.filter((course) => course.status === "active"),
+    [courses]
+  );
+
+  function guessTarget(sourceKey) {
+    const normalized = String(sourceKey || "").trim().toLowerCase();
+    return activeCourses.find((course) =>
+      String(course.videoCourseKey || "").trim().toLowerCase() === normalized ||
+      String(course.category || "").trim().toLowerCase() === normalized
+    )?.id || "";
+  }
+
+  async function loadTelegramCatalogue(force = false) {
+    if (!VIDEO_API_URL) {
+      setVideoError("Video API is not configured in Vercel.");
+      return;
+    }
+    setVideoLoading(true);
+    setVideoError("");
+    try {
+      const url = `${VIDEO_API_URL}/courses${force ? "?refresh=true" : ""}`;
+      const response = await fetch(url, { cache: "no-store" });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) throw new Error(payload?.error || "Could not load Telegram videos.");
+      setTelegramCatalogue(payload);
+      const defaults = {};
+      (payload.courses || []).forEach((source) => {
+        defaults[source.course] = sourceTargets[source.course] || guessTarget(source.course);
+      });
+      setSourceTargets(defaults);
+      if (!selectedTargetId && activeCourses[0]?.id) setSelectedTargetId(String(activeCourses[0].id));
+    } catch (error) {
+      setVideoError(error?.message || "Could not load Telegram video catalogue.");
+    } finally {
+      setVideoLoading(false);
+    }
+  }
+
+  async function loadManagedLessons(courseId = selectedTargetId) {
+    if (!courseId) {
+      setManagedLessons([]);
+      return;
+    }
+    setVideoLoading(true);
+    setVideoError("");
+    try {
+      const rows = await getVideoLessons(courseId);
+      setManagedLessons(rows);
+    } catch (error) {
+      setVideoError(error?.message || "Could not load published lessons.");
+    } finally {
+      setVideoLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (admin && activeCourses.length && !selectedTargetId) {
+      setSelectedTargetId(String(activeCourses[0].id));
+    }
+  }, [admin, activeCourses, selectedTargetId]);
+
+  useEffect(() => {
+    if (admin && selectedTargetId) loadManagedLessons(selectedTargetId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTargetId, admin]);
+
+  async function handleImport(source) {
+    const targetId = sourceTargets[source.course] || guessTarget(source.course);
+    if (!targetId) {
+      setVideoError(`Choose a website course for Telegram course “${source.course}” first.`);
+      return;
+    }
+    setVideoBusy(true);
+    setVideoError("");
+    setVideoMessage("");
+    try {
+      const lessons = buildImportedLessons(source, targetId);
+      const saved = await bulkImportVideoLessons(lessons);
+      setSelectedTargetId(String(targetId));
+      setManagedLessons(await getVideoLessons(targetId));
+      setVideoMessage(`${saved.length} lesson${saved.length === 1 ? "" : "s"} imported and published for ${activeCourses.find((course) => String(course.id) === String(targetId))?.title || `Course ${targetId}`}.`);
+    } catch (error) {
+      setVideoError(error?.message || "Could not import Telegram lessons.");
+    } finally {
+      setVideoBusy(false);
+    }
+  }
+
+  async function handleSaveLesson(lesson) {
+    setVideoBusy(true);
+    setVideoError("");
+    try {
+      const saved = await saveVideoLesson(lesson);
+      setManagedLessons((rows) => rows.map((row) => row.id === saved.id ? saved : row));
+      setVideoMessage("Lesson updated.");
+    } catch (error) {
+      setVideoError(error?.message || "Could not update lesson.");
+    } finally {
+      setVideoBusy(false);
+    }
+  }
+
+  async function handleDeleteLesson(lesson) {
+    if (!window.confirm(`Remove “${lesson.title}” from this course?`)) return;
+    setVideoBusy(true);
+    setVideoError("");
+    try {
+      await removeVideoLesson(lesson.id);
+      setManagedLessons((rows) => rows.filter((row) => row.id !== lesson.id));
+      setVideoMessage("Lesson removed from the published library.");
+    } catch (error) {
+      setVideoError(error?.message || "Could not remove lesson.");
+    } finally {
+      setVideoBusy(false);
+    }
+  }
+
+  return (
+    <section className="admin-video-manager">
+      <div className="admin-video-manager-head">
+        <div>
+          <span className="admin-section-title">VIDEO LIBRARY MANAGER</span>
+          <h2><Video size={21} /> Manage lessons without editing code.</h2>
+          <p>Sync videos from the private Telegram channel, map them to a website course, then publish or edit each lesson here.</p>
+        </div>
+        <button type="button" className="admin-secondary" onClick={() => loadTelegramCatalogue(true)} disabled={videoLoading || videoBusy}>
+          <RefreshCw size={16} className={videoLoading ? "spin" : ""} /> SYNC TELEGRAM
+        </button>
+      </div>
+
+      {videoMessage && <div className="admin-message success"><Check size={16} /> {videoMessage}</div>}
+      {videoError && <div className="admin-message error">{videoError}</div>}
+
+      <div className="admin-video-toolbar">
+        <label>Manage published lessons for
+          <select value={selectedTargetId} onChange={(event) => setSelectedTargetId(event.target.value)}>
+            <option value="">Choose course</option>
+            {activeCourses.map((course) => <option key={course.id} value={course.id}>#{course.number} — {course.title}</option>)}
+          </select>
+        </label>
+        <div className="admin-video-stats">
+          <span>{telegramCatalogue?.videoCount || 0} Telegram videos found</span>
+          <span>{managedLessons.filter((lesson) => lesson.published).length} published here</span>
+        </div>
+      </div>
+
+      {!telegramCatalogue ? (
+        <div className="admin-video-empty">
+          <UploadCloud size={26} />
+          <strong>Start with Telegram sync.</strong>
+          <span>Pull the current course/module/video list from your private channel. Existing videos are not uploaded again.</span>
+          <button type="button" className="modal-primary" onClick={() => loadTelegramCatalogue(false)} disabled={videoLoading}><RefreshCw size={15} /> LOAD TELEGRAM LIBRARY</button>
+        </div>
+      ) : (
+        <>
+          <div className="admin-video-source-grid">
+            {(telegramCatalogue.courses || []).map((source) => (
+              <article className="admin-video-source-card" key={source.course}>
+                <div className="admin-video-source-top"><span>{source.course}</span><strong>{source.videoCount} VIDEOS</strong></div>
+                <small>{source.moduleCount} modules</small>
+                <label>Website course
+                  <select
+                    value={sourceTargets[source.course] || ""}
+                    onChange={(event) => setSourceTargets((current) => ({ ...current, [source.course]: event.target.value }))}
+                  >
+                    <option value="">Choose course</option>
+                    {activeCourses.map((course) => <option key={course.id} value={course.id}>#{course.number} — {course.title}</option>)}
+                  </select>
+                </label>
+                <button type="button" className="admin-import-button" onClick={() => handleImport(source)} disabled={videoBusy || !sourceTargets[source.course]}>
+                  <UploadCloud size={15} /> IMPORT & PUBLISH
+                </button>
+              </article>
+            ))}
+          </div>
+
+          <div className="admin-published-lessons">
+            <div className="admin-form-head"><span>PUBLISHED LESSONS</span><strong>{managedLessons.length}</strong></div>
+            {selectedTargetId && managedLessons.length === 0 ? (
+              <div className="admin-list-empty">No published lessons for this website course yet.</div>
+            ) : managedLessons.map((lesson) => (
+              <div className={`admin-lesson-row ${lesson.published ? "" : "unpublished"}`} key={lesson.id}>
+                <div className="admin-lesson-fields">
+                  <label>Module<input value={lesson.module} onChange={(event) => setManagedLessons((rows) => rows.map((row) => row.id === lesson.id ? { ...row, module: event.target.value } : row))} /></label>
+                  <label>Title<input value={lesson.title} onChange={(event) => setManagedLessons((rows) => rows.map((row) => row.id === lesson.id ? { ...row, title: event.target.value } : row))} /></label>
+                  <label>Order<input type="number" min="1" value={lesson.order} onChange={(event) => setManagedLessons((rows) => rows.map((row) => row.id === lesson.id ? { ...row, order: event.target.value } : row))} /></label>
+                </div>
+                <div className="admin-lesson-meta"><span>{lesson.videoId || "VIDEO"}</span><span>Message {lesson.messageId}</span></div>
+                <div className="admin-lesson-actions">
+                  <button type="button" className="admin-secondary" onClick={() => handleSaveLesson({ ...lesson, published: !lesson.published })} disabled={videoBusy}>
+                    {lesson.published ? <><EyeOff size={15} /> UNPUBLISH</> : <><Check size={15} /> PUBLISH</>}
+                  </button>
+                  <button type="button" className="admin-edit" onClick={() => handleSaveLesson(lesson)} disabled={videoBusy}><Save size={15} /> SAVE</button>
+                  <button type="button" className="admin-delete" onClick={() => handleDeleteLesson(lesson)} disabled={videoBusy}><Trash2 size={15} /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </section>
+  );
 }
 
 export default function AdminPage() {
@@ -269,6 +510,8 @@ export default function AdminPage() {
         <button type="button" className="admin-secondary" onClick={handleSeed} disabled={busy}><Database size={17} /> SYNC STATIC CATALOGUE</button>
       </div>
 
+      <VideoManager courses={items} admin={admin} />
+
       <section className="admin-layout">
         <form className="admin-form" onSubmit={handleSave}>
           <div className="admin-form-head"><span>COURSE EDITOR</span><strong>{editor.id ? `#${editor.number}` : "NEW"}</strong></div>
@@ -314,6 +557,11 @@ export default function AdminPage() {
           <label>Overview<textarea rows="4" value={editor.overview} onChange={(e) => setEditor({ ...editor, overview: e.target.value })} /></label>
           <label>What you&apos;ll learn <small>Comma separated</small><textarea rows="3" value={editor.learnText || ""} onChange={(e) => setEditor({ ...editor, learnText: e.target.value })} /></label>
           <label>Modules <small>Comma separated</small><textarea rows="3" value={editor.modulesText || ""} onChange={(e) => setEditor({ ...editor, modulesText: e.target.value })} /></label>
+
+          <div className="admin-section-title">VIDEO ACCESS</div>
+          <label className="admin-check"><input type="checkbox" checked={Boolean(editor.videoEnabled)} onChange={(e) => setEditor({ ...editor, videoEnabled: e.target.checked })} /> Enable secure video lessons for this course</label>
+          <label>Telegram Course Key <small>Must match the COURSE: value in your private video captions. Example: CTET</small><input value={editor.videoCourseKey || ""} onChange={(e) => setEditor({ ...editor, videoCourseKey: e.target.value })} placeholder={editor.category || "CTET"} /></label>
+
           <div className="admin-section-title">DISCOVERY</div>
           <label className="admin-check"><input type="checkbox" checked={Boolean(editor.featured)} onChange={(e) => setEditor({ ...editor, featured: e.target.checked })} /> Feature this course on the home page</label>
           <button className="modal-primary admin-save" type="submit" disabled={busy}><Save size={17} /> {busy ? "SAVING..." : "SAVE COURSE"}</button>
