@@ -38,7 +38,10 @@ const CHANNEL_ID = "-1004305906553";
 // Current POC scan range. We will replace this with a production index/cache later.
 const SCAN_FROM = 1;
 const SCAN_TO = 200;
-const COURSE_CACHE_TTL_MS = 30_000;
+// Video library metadata is relatively stable. Keep it warm for 10 minutes
+// and refresh it in the background instead of making visitors wait for a
+// Telegram scan on every page open.
+const COURSE_CACHE_TTL_MS = 10 * 60_000;
 
 // Streaming optimization: Telegram MTProto allows up to 1 MiB per upload.getFile
 // request in the standard download path. Larger relay chunks reduce request overhead
@@ -527,18 +530,8 @@ async function scanVideoMessages() {
     .map(toVideoRecord);
 }
 
-async function getCachedVideoLibrary(force = false) {
-  const now = Date.now();
-
-  if (
-    !force &&
-    courseCache.data &&
-    now < courseCache.expiresAt
-  ) {
-    return courseCache.data;
-  }
-
-  if (!force && courseCache.promise) {
+async function refreshVideoLibrary() {
+  if (courseCache.promise) {
     return courseCache.promise;
   }
 
@@ -550,14 +543,46 @@ async function getCachedVideoLibrary(force = false) {
         promise: null
       };
 
+      console.log(
+        `Video library cache refreshed: ${videos.length} videos; valid for ${COURSE_CACHE_TTL_MS / 1000}s`
+      );
+
       return videos;
     })
     .catch((error) => {
       courseCache.promise = null;
+      console.error("VIDEO LIBRARY CACHE REFRESH ERROR:", error);
       throw error;
     });
 
   return courseCache.promise;
+}
+
+async function getCachedVideoLibrary(force = false) {
+  const now = Date.now();
+
+  // Fresh cache: return immediately.
+  if (
+    !force &&
+    courseCache.data &&
+    now < courseCache.expiresAt
+  ) {
+    return courseCache.data;
+  }
+
+  // Stale cache: return immediately and refresh in the background.
+  // This prevents a Telegram scan from blocking the course page.
+  if (
+    !force &&
+    courseCache.data &&
+    now >= courseCache.expiresAt
+  ) {
+    void refreshVideoLibrary().catch(() => {});
+    return courseCache.data;
+  }
+
+  // First load or explicit refresh: one shared scan only.
+  return refreshVideoLibrary();
 }
 
 async function findLatestVideoMessage() {
@@ -1048,7 +1073,9 @@ app.get("/courses", async (req, res) => {
     res.json({
       success: true,
       ...catalogue,
-      cachedForMs: COURSE_CACHE_TTL_MS
+      cachedForMs: COURSE_CACHE_TTL_MS,
+      cacheExpiresAt: courseCache.expiresAt || null,
+      cacheReady: Boolean(courseCache.data)
     });
   } catch (error) {
     console.error("COURSES ERROR:", error);
@@ -1209,3 +1236,8 @@ const server = app.listen(PORT, () => {
 server.keepAliveTimeout = 65_000;
 server.headersTimeout = 70_000;
 server.requestTimeout = 0;
+
+// Warm the Telegram video index in the background. On a warm Render instance,
+// the website can then receive /courses from memory instead of waiting for
+// Telegram discovery.
+void refreshVideoLibrary().catch(() => {});
