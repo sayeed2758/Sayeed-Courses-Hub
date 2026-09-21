@@ -14,10 +14,10 @@ import {
   X
 } from "lucide-react";
 import AuthPanel from "./AuthPanel";
-import { useAuth } from "../app/providers";
-import { enrollInCourse, getUserEnrollments } from "../lib/enrollment";
-import { loadCatalogueCourses, getCourseFromList } from "../lib/catalogue";
 import VideoPlayer from "./VideoPlayer";
+import { useAuth } from "../app/providers";
+import { enrollInCourse, getUserEnrollments, unenrollFromCourse } from "../lib/enrollment";
+import { loadCatalogueCourses, getCourseFromList } from "../lib/catalogue";
 
 function CourseArtwork({ course }) {
   return (
@@ -113,6 +113,24 @@ export default function CourseDetailsClient({ course: initialCourse, courseId })
       setAuthOpen(true);
       return;
     }
+
+    if (enrolled) {
+      const confirmed = window.confirm(`Remove “${course.title}” from My Courses?`);
+      if (!confirmed) return;
+      setBusy(true);
+      setMessage("");
+      try {
+        await unenrollFromCourse(user.uid, course.id);
+        setEnrolled(false);
+        setMessage("Course removed from My Courses.");
+      } catch (error) {
+        setMessage(error?.message || "Could not remove this course.");
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
     setBusy(true);
     setMessage("");
     try {
@@ -128,17 +146,12 @@ export default function CourseDetailsClient({ course: initialCourse, courseId })
 
   function handleStudy() {
     if (!isActive) return;
-    if (!user) {
-      setMessage("Sign in with Google to access secure course videos.");
-      setAuthOpen(true);
+    const player = document.getElementById("course-video-player");
+    if (player) {
+      player.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
-    const target = document.getElementById("course-video-player");
-    if (target) {
-      target.scrollIntoView({ behavior: "smooth", block: "start" });
-      return;
-    }
-    setMessage("Video lessons are loading. Please try again in a moment.");
+    setMessage(course.videoEnabled ? "Video player is loading. Scroll down to Video Lessons." : "Video lessons are not connected to this course yet.");
   }
 
   return (
@@ -170,9 +183,9 @@ export default function CourseDetailsClient({ course: initialCourse, courseId })
           </div>
 
           <div className="detail-actions-new">
-            <button type="button" className={`enroll-button ${enrolled ? "is-enrolled" : ""}`} onClick={handleEnroll} disabled={!isActive || busy || enrolled}>
-              <span className="action-lock">{enrolled ? "✓" : "+"}</span>
-              {!isActive ? "COMING SOON" : busy ? "SAVING..." : enrolled ? "ENROLLED" : "ENROLL"}
+            <button type="button" className={`enroll-button ${enrolled ? "is-enrolled" : ""}`} onClick={handleEnroll} disabled={!isActive || busy}>
+              <span className="action-lock">{enrolled ? "×" : "+"}</span>
+              {!isActive ? "COMING SOON" : busy ? "WORKING..." : enrolled ? "UNENROLL" : "ENROLL"}
             </button>
             <button type="button" className="study-button" onClick={handleStudy} disabled={!isActive}>
               LET&apos;S STUDY <Send size={18} />
@@ -183,11 +196,11 @@ export default function CourseDetailsClient({ course: initialCourse, courseId })
         </div>
       </section>
 
-      {enrolled && course.videoEnabled ? (
-        <div id="course-video-player" className="course-video-anchor">
+      {course.videoEnabled && (
+        <div id="course-video-player" className="course-video-player-anchor">
           <VideoPlayer course={course} />
         </div>
-      ) : null}
+      )}
 
       <section className="detail-grid-new">
         <div className="detail-panel-new">

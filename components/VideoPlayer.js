@@ -1,10 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, CheckCircle2, LoaderCircle, LockKeyhole, Play, RefreshCw, ShieldCheck } from "lucide-react";
 import { useAuth } from "../app/providers";
 import { getVideoCourseByKey, loadVideoCourses, VIDEO_API_URL } from "../lib/videoApi";
 import { getPublishedVideoLessons } from "../lib/videoLessons";
+import { getVideoProgress, saveVideoProgress } from "../lib/videoProgress";
+
+function formatTime(seconds) {
+  const total = Math.max(Math.floor(Number(seconds || 0)), 0);
+  const minutes = Math.floor(total / 60);
+  const secs = total % 60;
+  if (minutes >= 60) {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  }
+  return `${minutes}:${String(secs).padStart(2, "0")}`;
+}
 
 export default function VideoPlayer({ course }) {
   const { user } = useAuth();
@@ -15,6 +28,9 @@ export default function VideoPlayer({ course }) {
   const [playing, setPlaying] = useState(false);
   const [error, setError] = useState("");
   const [expiresIn, setExpiresIn] = useState(null);
+  const [resumeProgress, setResumeProgress] = useState(null);
+  const videoRef = useRef(null);
+  const lastProgressSaveRef = useRef(0);
 
   const videoCourse = useMemo(
     () => getVideoCourseByKey(catalogue, course?.videoCourseKey),
@@ -32,6 +48,46 @@ export default function VideoPlayer({ course }) {
     () => videos.find((video) => Number(video.messageId) === Number(selectedMessageId)) || videos[0] || null,
     [videos, selectedMessageId]
   );
+
+  async function loadSelectedProgress(video = selectedVideo) {
+    if (!user || !video) {
+      setResumeProgress(null);
+      return;
+    }
+    try {
+      const progress = await getVideoProgress(user.uid, course.id, video.messageId);
+      setResumeProgress(progress);
+    } catch {
+      setResumeProgress(null);
+    }
+  }
+
+  async function persistVideoProgress(force = false, completed = false) {
+    const element = videoRef.current;
+    if (!user || !course || !selectedVideo || !element) return;
+
+    const now = Date.now();
+    if (!force && now - lastProgressSaveRef.current < 8000) return;
+    if (!force && !Number.isFinite(element.currentTime)) return;
+
+    lastProgressSaveRef.current = now;
+    try {
+      await saveVideoProgress({
+        userId: user.uid,
+        courseId: course.id,
+        messageId: selectedVideo.messageId,
+        position: element.currentTime,
+        duration: Number.isFinite(element.duration) ? element.duration : 0,
+        completed: completed || (
+          Number.isFinite(element.duration) &&
+          element.duration > 0 &&
+          element.currentTime / element.duration >= 0.95
+        )
+      });
+    } catch {
+      // Progress save is intentionally non-blocking for playback.
+    }
+  }
 
   async function loadVideos(force = false) {
     if (!course?.videoEnabled || !course?.videoCourseKey) {
@@ -128,10 +184,20 @@ export default function VideoPlayer({ course }) {
     setPlaybackUrl("");
     setPlaying(false);
     setError("");
+    setResumeProgress(null);
     loadVideos();
     // course identity is the intended reset boundary.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [course?.id, user?.uid]);
+
+  useEffect(() => {
+    loadSelectedProgress(selectedVideo);
+    setResumeProgress((current) => current || null);
+    setPlaybackUrl("");
+    setPlaying(false);
+    lastProgressSaveRef.current = 0;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedVideo?.messageId, user?.uid, course?.id]);
 
   useEffect(() => {
     if (selectedVideo && playing && Number(selectedVideo.messageId) !== Number(selectedMessageId)) {
@@ -182,6 +248,7 @@ export default function VideoPlayer({ course }) {
           <div className="secure-video-frame">
             {playbackUrl ? (
               <video
+                ref={videoRef}
                 className="secure-video"
                 controls
                 playsInline
@@ -189,6 +256,21 @@ export default function VideoPlayer({ course }) {
                 controlsList="nodownload"
                 disablePictureInPicture
                 src={playbackUrl}
+                onLoadedMetadata={(event) => {
+                  const saved = Number(resumeProgress?.position || 0);
+                  const duration = event.currentTarget.duration;
+                  if (
+                    saved > 5 &&
+                    Number.isFinite(duration) &&
+                    duration > 0 &&
+                    saved < Math.max(duration - 5, 0)
+                  ) {
+                    event.currentTarget.currentTime = saved;
+                  }
+                }}
+                onTimeUpdate={() => { void persistVideoProgress(false); }}
+                onPause={() => { void persistVideoProgress(true); }}
+                onEnded={() => { void persistVideoProgress(true, true); }}
                 onContextMenu={(event) => event.preventDefault()}
                 onError={() => setError("Playback expired or the video could not be loaded. Tap Refresh Playback to continue.")}
               />
@@ -222,6 +304,11 @@ export default function VideoPlayer({ course }) {
           </div>
 
           {expiresIn && <div className="video-expiry-note"><CheckCircle2 size={14} /> Secure playback access is temporary ({Math.round(expiresIn / 60)} min).</div>}
+          {resumeProgress?.completed ? (
+            <div className="video-progress-note success"><CheckCircle2 size={14} /> Lesson completed. You can replay it anytime.</div>
+          ) : resumeProgress?.position > 5 ? (
+            <div className="video-progress-note"><RefreshCw size={14} /> Resume available from {formatTime(resumeProgress.position)}.</div>
+          ) : null}
           {error && <div className="video-inline-error"><AlertCircle size={16} /> {error}</div>}
 
           <div className="video-library-list">
