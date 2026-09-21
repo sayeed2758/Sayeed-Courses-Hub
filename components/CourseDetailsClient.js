@@ -14,6 +14,7 @@ import {
   X
 } from "lucide-react";
 import AuthPanel from "./AuthPanel";
+import VideoPlayer from "./VideoPlayer";
 import { useAuth } from "../app/providers";
 import { enrollInCourse, getUserEnrollments } from "../lib/enrollment";
 import { loadCatalogueCourses, getCourseFromList } from "../lib/catalogue";
@@ -127,11 +128,12 @@ export default function CourseDetailsClient({ course: initialCourse, courseId })
 
   function handleStudy() {
     if (!isActive) return;
-    if (!course.telegramUrl) {
-      setMessage("Telegram access has not been connected to this course yet.");
+    const player = document.getElementById("course-video-player");
+    if (player) {
+      player.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
-    window.open(course.telegramUrl, "_blank", "noopener,noreferrer");
+    setMessage(course.videoEnabled ? "Video player is loading. Scroll down to Video Lessons." : "Video lessons are not connected to this course yet.");
   }
 
   return (
@@ -175,6 +177,12 @@ export default function CourseDetailsClient({ course: initialCourse, courseId })
           {message && <div className="detail-message" aria-live="polite">{message}</div>}
         </div>
       </section>
+
+      {course.videoEnabled && (
+        <div id="course-video-player" className="course-video-player-anchor">
+          <VideoPlayer course={course} />
+        </div>
+      )}
 
       <section className="detail-grid-new">
         <div className="detail-panel-new">
