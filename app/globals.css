@@ -4319,3 +4319,32 @@ textarea:focus-visible {
 .video-preparing-overlay { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px; padding:20px; text-align:center; background:linear-gradient(180deg,rgba(5,7,6,.18),rgba(5,7,6,.78)); color:#fff; pointer-events:none; }
 .video-preparing-overlay strong { font-size:13px; }
 .video-preparing-overlay span { max-width:280px; color:rgba(255,255,255,.58); font-size:10px; line-height:1.45; }
+
+
+/* =========================================================
+   BATCH 1 — DIRECT TELEGRAM UPLOADER
+   ========================================================= */
+.admin-upload-panel{margin:0 0 28px;border:1px solid rgba(255,255,255,.10);border-radius:26px;background:rgba(24,18,38,.82);box-shadow:0 18px 60px rgba(0,0,0,.18);padding:22px;overflow:hidden}
+.admin-upload-head{display:flex;gap:18px;align-items:flex-start;justify-content:space-between;margin-bottom:18px}
+.admin-upload-head h2{display:flex;align-items:center;gap:9px;margin:7px 0 8px;font-size:22px}
+.admin-upload-head p{margin:0;max-width:760px;color:rgba(255,255,255,.66);line-height:1.6}
+.admin-upload-chip{white-space:nowrap;border:1px solid rgba(244,194,76,.28);background:rgba(244,194,76,.08);color:#f4c24c;border-radius:999px;padding:8px 11px;font-size:10px;font-weight:900;letter-spacing:.12em}
+.admin-upload-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin-top:16px}
+.admin-upload-grid label{display:flex;flex-direction:column;gap:7px}
+.admin-upload-grid input,.admin-upload-grid select{min-height:44px}
+.admin-upload-file-card{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:18px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035);margin-top:16px}
+.admin-upload-file-icon{width:42px;height:42px;display:grid;place-items:center;border-radius:13px;background:rgba(137,92,255,.14);color:#c7b8ff;flex:none}
+.admin-upload-file-main{min-width:0;flex:1;display:flex;flex-direction:column;gap:4px}
+.admin-upload-file-main strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.admin-upload-file-main span{font-size:12px;color:rgba(255,255,255,.54)}
+.admin-upload-progress-card{margin-top:16px;padding:15px;border-radius:18px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08)}
+.admin-upload-progress-top,.admin-upload-progress-meta{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.admin-upload-progress-top strong{font-size:18px}.admin-upload-progress-top span,.admin-upload-progress-meta{font-size:12px;color:rgba(255,255,255,.58)}
+.admin-upload-progress-track{height:10px;margin:12px 0;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+.admin-upload-progress-track span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#8d63ff,#f0c45b);transition:width .18s ease}
+.admin-upload-progress-meta span{display:inline-flex;align-items:center;gap:5px}
+.admin-upload-done{margin-top:12px;padding:10px 12px;border-radius:12px;background:rgba(57,211,126,.08);border:1px solid rgba(57,211,126,.17);color:#a7f0c4;font-size:12px;display:flex;align-items:center;gap:7px}
+.admin-upload-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+.admin-upload-cancel{border-color:rgba(255,100,110,.25)!important;color:#ff9da4!important}
+.admin-upload-note{margin-top:14px;font-size:11px;line-height:1.6;color:rgba(255,255,255,.48)}
+@media (max-width:720px){.admin-upload-panel{padding:17px;border-radius:20px}.admin-upload-head{flex-direction:column}.admin-upload-chip{align-self:flex-start}.admin-upload-grid{grid-template-columns:1fr}.admin-upload-progress-meta{flex-wrap:wrap}.admin-upload-actions>*{flex:1 1 100%}}
