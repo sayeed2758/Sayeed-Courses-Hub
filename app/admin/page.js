@@ -8,6 +8,7 @@ import { courses as staticCourses } from "../../lib/courses";
 import { loadCatalogueCourses } from "../../lib/catalogue";
 import { ensureCatalogueSeeded, isUserAdmin, removeCourse, saveCourse, seedStaticCourses } from "../../lib/admin";
 import { VIDEO_API_URL } from "../../lib/videoApi";
+import AdminTelegramUploader from "../../components/AdminTelegramUploader";
 import { bulkImportVideoLessons, getVideoLessons, removeVideoLesson, saveVideoLesson } from "../../lib/videoLessons";
 
 const emptyCourse = {
@@ -678,6 +679,8 @@ export default function AdminPage() {
         <button type="button" className="modal-primary" onClick={startNew}><Plus size={17} /> NEW COURSE</button>
         <button type="button" className="admin-secondary" onClick={handleSeed} disabled={busy}><Database size={17} /> SYNC STATIC CATALOGUE</button>
       </div>
+
+      <AdminTelegramUploader courses={items} />
 
       <VideoManager courses={items} admin={admin} />
 
