@@ -44,10 +44,6 @@ function CourseArtwork({ course }) {
           loading={course.number === 1 ? "eager" : "lazy"}
           fetchPriority={course.number === 1 ? "high" : "auto"}
           decoding="async"
-          sizes="(max-width: 760px) 100vw, (max-width: 1179px) 50vw, 33vw"
-          onError={(event) => {
-            event.currentTarget.style.display = "none";
-          }}
         />
       ) : null}
       <div className="cover-grid" />
@@ -390,6 +386,7 @@ export default function Home() {
       <section className="hero-block">
         <span className="hero-kicker">CURIOUS MINDS. ENDLESS POSSIBILITIES.</span>
         <h1>Find your next <em>skill.</em></h1>
+        <p className="hero-copy">Learn at your pace with focused courses, practical resources and a simple path from enrolment to study.</p>
         <div className="search-box-large">
           <Search size={24} />
           <input
@@ -434,6 +431,34 @@ export default function Home() {
           {filtersActive && (
             <button type="button" onClick={clearFilters}>Clear filters</button>
           )}
+        </div>
+      </section>
+
+      <section className="category-rail-section" aria-label="Browse course categories">
+        <div className="category-rail-head">
+          <div>
+            <span className="section-kicker">BROWSE BY INTEREST</span>
+            <h2>Choose a learning path.</h2>
+          </div>
+          <button type="button" className="rail-all-button" onClick={() => { setSelectedCategory("All"); document.getElementById("courses")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>
+            View all <ArrowRight size={16} />
+          </button>
+        </div>
+        <div className="category-rail" role="list">
+          {catalogueCategories.map((category) => (
+            <button
+              key={category}
+              type="button"
+              role="listitem"
+              className={`category-rail-card ${selectedCategory === category ? "active" : ""}`}
+              onClick={() => selectCategory(category)}
+            >
+              <span className="category-rail-index">{String((category === "All" ? 0 : catalogueCategories.indexOf(category))).padStart(2, "0")}</span>
+              <span className="category-rail-name">{category === "All" ? "All Courses" : category}</span>
+              <span className="category-rail-count">{categoryCounts[category] || 0}</span>
+              <ArrowUpRight size={16} />
+            </button>
+          ))}
         </div>
       </section>
 
