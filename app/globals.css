@@ -3854,3 +3854,457 @@ body::after {
     gap: 10px;
   }
 }
+
+/* =========================================================
+   BATCH 1 — TELEGRAM VIDEO LIBRARY 2.0
+   ========================================================= */
+.admin-video-sync-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.admin-secondary-muted {
+  opacity: .72;
+}
+.admin-video-library-controls {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 150px auto;
+  gap: 10px;
+  align-items: center;
+  margin: 0 0 16px;
+}
+.admin-video-search {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.09);
+  background: rgba(255,255,255,.025);
+  color: rgba(255,255,255,.52);
+}
+.admin-video-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #fff;
+  font: 600 12px/1 var(--ui);
+}
+.admin-video-search input::placeholder { color: rgba(255,255,255,.35); }
+.admin-video-search button {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255,255,255,.05);
+  color: rgba(255,255,255,.6);
+  display: grid;
+  place-items: center;
+}
+.admin-video-library-controls > select {
+  min-height: 42px;
+  padding: 0 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: #121613;
+  color: #fff;
+}
+.admin-video-sync-meta {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  color: rgba(255,255,255,.45);
+  font: 600 10px/1.3 var(--ui);
+  text-align: right;
+}
+.admin-video-sync-meta strong { color: #cfff9c; }
+.admin-unmapped-panel {
+  margin-top: 14px;
+  border: 1px solid rgba(255,184,92,.14);
+  border-radius: 18px;
+  background: rgba(255,184,92,.035);
+  overflow: hidden;
+}
+.admin-unmapped-panel .admin-form-head {
+  align-items: flex-start;
+  padding: 14px;
+}
+.admin-unmapped-panel .admin-form-head > div {
+  display: grid;
+  gap: 5px;
+}
+.admin-unmapped-panel .admin-form-head small {
+  max-width: 760px;
+  color: rgba(255,255,255,.46);
+  font-weight: 500;
+  line-height: 1.45;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.admin-unmapped-list { border-top: 1px solid rgba(255,255,255,.07); }
+.admin-unmapped-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-top: 1px solid rgba(255,255,255,.055);
+}
+.admin-unmapped-row:first-child { border-top: none; }
+.admin-unmapped-main {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+.admin-unmapped-main strong {
+  color: #fff;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.admin-unmapped-main span {
+  color: rgba(255,255,255,.45);
+  font: 600 10px/1.4 var(--ui);
+}
+.admin-unmapped-note {
+  padding: 12px 14px 14px;
+  color: rgba(255,255,255,.48);
+  font: 600 11px/1.5 var(--ui);
+}
+.admin-video-empty.compact { padding: 20px 16px; margin-top: 12px; }
+
+@media (max-width: 760px) {
+  .admin-video-sync-actions { width: 100%; justify-content: stretch; }
+  .admin-video-sync-actions button { flex: 1 1 0; justify-content: center; }
+  .admin-video-library-controls {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+  .admin-video-sync-meta { justify-content: flex-start; text-align: left; }
+  .admin-unmapped-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .admin-unmapped-row .admin-import-button { width: 100%; }
+}
+
+/* =========================================================
+   BATCH 2 — FINAL POLISH
+   Phase 4: course-card geometry + responsive actions
+   Phase 5: static wave background (no animated page backdrop)
+   Phase 6: micro-interactions + asset resilience
+   ========================================================= */
+
+/* Phase 5 — keep the premium wave visual, but make the page backdrop static. */
+html { background: #030504; }
+body {
+  background: #030504;
+  overflow-x: hidden;
+}
+body::before {
+  animation: none !important;
+  transform: none !important;
+  inset: -16%;
+  opacity: .90;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,.40), rgba(0,0,0,.44)),
+    url('/green-wave-background.jpg') center 58% / cover no-repeat;
+  filter: saturate(.92) contrast(1.02) brightness(.74);
+}
+body::after { display: none !important; }
+
+/* Phase 4 — cleaner card geometry and consistent 16:9-ish course artwork. */
+.course-grid {
+  gap: 17px;
+}
+.course-card {
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(18,23,20,.98), rgba(9,12,11,.99));
+  box-shadow: 0 22px 52px rgba(0,0,0,.24);
+}
+.course-cover {
+  aspect-ratio: 16 / 9;
+}
+.cover-thumbnail {
+  image-rendering: auto;
+}
+.course-body {
+  padding: 15px 16px 16px;
+}
+.course-title-link h2 {
+  margin-top: 13px;
+  font-size: clamp(26px, 4vw, 33px);
+}
+.course-body > p {
+  min-height: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+.course-actions {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  margin-top: 15px;
+}
+.enroll-button,
+.study-button {
+  min-width: 0;
+  min-height: 50px;
+  border-radius: 14px;
+  padding-inline: 10px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.enroll-button .action-lock {
+  width: 22px;
+  height: 22px;
+  font-size: 13px;
+}
+
+/* Phase 6 — subtle, touch-safe micro UI polish. */
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid rgba(186,255,114,.62);
+  outline-offset: 3px;
+}
+.search-box-large:focus-within {
+  border-color: rgba(186,255,114,.28);
+  box-shadow: 0 20px 50px rgba(0,0,0,.24), 0 0 0 3px rgba(186,255,114,.05), inset 0 1px 0 rgba(255,255,255,.03);
+}
+.course-card,
+.header-pill,
+.header-icon,
+.category-trigger,
+.sort-button,
+.enroll-button,
+.study-button,
+.featured-card {
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease, background-color .18s ease, color .18s ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .course-card:hover { transform: translateY(-3px); }
+  .header-pill:hover,
+  .header-icon:hover,
+  .category-trigger:hover,
+  .sort-button:hover { transform: translateY(-1px); }
+  .enroll-button:hover:not(:disabled),
+  .study-button:hover:not(:disabled) { transform: translateY(-1px); }
+}
+.enroll-button:active:not(:disabled),
+.study-button:active:not(:disabled) {
+  transform: translateY(1px) scale(.995);
+}
+
+/* Asset resilience: if a third-party thumbnail breaks, the styled artwork underneath remains intact. */
+.cover-thumbnail { background: transparent; }
+.admin-thumb-error-label {
+  display: none;
+  position: absolute;
+  inset: 0;
+  place-items: center;
+  padding: 20px;
+  color: rgba(255,255,255,.60);
+  text-align: center;
+  font: 600 11px/1.5 var(--ui, Inter), sans-serif;
+}
+.admin-thumb-frame.is-error .admin-thumb-error-label { display: grid; }
+
+@media (max-width: 760px) {
+  .course-grid { gap: 15px; }
+  .course-cover { aspect-ratio: 16 / 9; }
+  .course-body { padding: 14px 14px 15px; }
+  .course-title-link h2 { font-size: 28px; }
+  .enroll-button,
+  .study-button { min-height: 47px; font-size: 12px; }
+  .course-actions { margin-top: 13px; }
+}
+
+@media (max-width: 380px) {
+  .reference-shell { width: calc(100% - 10px); }
+  .course-card { border-radius: 21px; }
+  .course-title-link h2 { font-size: 25px; }
+  .enroll-button,
+  .study-button { min-height: 45px; padding-inline: 7px; font-size: 11px; }
+  .enroll-button .action-lock { width: 19px; height: 19px; font-size: 11px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .course-card,
+  .header-pill,
+  .header-icon,
+  .category-trigger,
+  .sort-button,
+  .enroll-button,
+  .study-button,
+  .featured-card {
+    transition: none !important;
+  }
+}
+
+/* =========================================================
+   BATCH 2 — FINAL POLISH
+   Phase 4: course-card geometry + responsive actions
+   Phase 5: static wave background (no animated page backdrop)
+   Phase 6: micro-interactions + asset resilience
+   ========================================================= */
+
+/* Phase 5 — keep the premium wave visual, but make the page backdrop static. */
+html { background: #030504; }
+body {
+  background: #030504;
+  overflow-x: hidden;
+}
+body::before {
+  animation: none !important;
+  transform: none !important;
+  inset: -16%;
+  opacity: .90;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,.40), rgba(0,0,0,.44)),
+    url('/green-wave-background.jpg') center 58% / cover no-repeat;
+  filter: saturate(.92) contrast(1.02) brightness(.74);
+}
+body::after { display: none !important; }
+
+/* Phase 4 — cleaner card geometry and consistent 16:9-ish course artwork. */
+.course-grid { gap: 17px; }
+.course-card {
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(18,23,20,.98), rgba(9,12,11,.99));
+  box-shadow: 0 22px 52px rgba(0,0,0,.24);
+}
+.course-cover { aspect-ratio: 16 / 9; }
+.cover-thumbnail { image-rendering: auto; }
+.course-body { padding: 15px 16px 16px; }
+.course-title-link h2 {
+  margin-top: 13px;
+  font-size: clamp(26px, 4vw, 33px);
+}
+.course-body > p {
+  min-height: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+.course-actions {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  margin-top: 15px;
+}
+.enroll-button,
+.study-button {
+  min-width: 0;
+  min-height: 50px;
+  border-radius: 14px;
+  padding-inline: 10px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.enroll-button .action-lock {
+  width: 22px;
+  height: 22px;
+  font-size: 13px;
+}
+
+/* Phase 6 — subtle, touch-safe micro UI polish. */
+button,
+a,
+input,
+select,
+textarea { -webkit-tap-highlight-color: transparent; }
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid rgba(186,255,114,.62);
+  outline-offset: 3px;
+}
+.search-box-large:focus-within {
+  border-color: rgba(186,255,114,.28);
+  box-shadow: 0 20px 50px rgba(0,0,0,.24), 0 0 0 3px rgba(186,255,114,.05), inset 0 1px 0 rgba(255,255,255,.03);
+}
+.course-card,
+.header-pill,
+.header-icon,
+.category-trigger,
+.sort-button,
+.enroll-button,
+.study-button,
+.featured-card {
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease, background-color .18s ease, color .18s ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .course-card:hover { transform: translateY(-3px); }
+  .header-pill:hover,
+  .header-icon:hover,
+  .category-trigger:hover,
+  .sort-button:hover { transform: translateY(-1px); }
+  .enroll-button:hover:not(:disabled),
+  .study-button:hover:not(:disabled) { transform: translateY(-1px); }
+}
+.enroll-button:active:not(:disabled),
+.study-button:active:not(:disabled) {
+  transform: translateY(1px) scale(.995);
+}
+
+/* Asset resilience: if a third-party thumbnail breaks, the styled artwork underneath remains intact. */
+.cover-thumbnail { background: transparent; }
+.admin-thumb-error-label {
+  display: none;
+  position: absolute;
+  inset: 0;
+  place-items: center;
+  padding: 20px;
+  color: rgba(255,255,255,.60);
+  text-align: center;
+  font: 600 11px/1.5 var(--ui, Inter), sans-serif;
+}
+.admin-thumb-frame.is-error .admin-thumb-error-label { display: grid; }
+
+@media (max-width: 760px) {
+  .course-grid { gap: 15px; }
+  .course-cover { aspect-ratio: 16 / 9; }
+  .course-body { padding: 14px 14px 15px; }
+  .course-title-link h2 { font-size: 28px; }
+  .enroll-button,
+  .study-button { min-height: 47px; font-size: 12px; }
+  .course-actions { margin-top: 13px; }
+}
+
+@media (max-width: 380px) {
+  .reference-shell { width: calc(100% - 10px); }
+  .course-card { border-radius: 21px; }
+  .course-title-link h2 { font-size: 25px; }
+  .enroll-button,
+  .study-button { min-height: 45px; padding-inline: 7px; font-size: 11px; }
+  .enroll-button .action-lock { width: 19px; height: 19px; font-size: 11px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .course-card,
+  .header-pill,
+  .header-icon,
+  .category-trigger,
+  .sort-button,
+  .enroll-button,
+  .study-button,
+  .featured-card { transition: none !important; }
+}

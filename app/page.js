@@ -44,6 +44,10 @@ function CourseArtwork({ course }) {
           loading={course.number === 1 ? "eager" : "lazy"}
           fetchPriority={course.number === 1 ? "high" : "auto"}
           decoding="async"
+          sizes="(max-width: 760px) 100vw, (max-width: 1179px) 50vw, 33vw"
+          onError={(event) => {
+            event.currentTarget.style.display = "none";
+          }}
         />
       ) : null}
       <div className="cover-grid" />
