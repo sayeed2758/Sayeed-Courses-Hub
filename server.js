@@ -35,13 +35,30 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 const CHANNEL_ID = "-1004305906553";
 
-// Current POC scan range. We will replace this with a production index/cache later.
-const SCAN_FROM = 1;
-const SCAN_TO = 200;
-// Video library metadata is relatively stable. Keep it warm for 10 minutes
-// and refresh it in the background instead of making visitors wait for a
-// Telegram scan on every page open.
-const COURSE_CACHE_TTL_MS = 10 * 60_000;
+// Telegram sync/index configuration. The previous implementation queried a
+// fixed message-ID range (1..200), which silently missed newer uploads and
+// could not surface videos that had no metadata caption. Batch 1 replaces
+// that proof-of-concept scan with a paginated index + incremental refresh.
+const TELEGRAM_SYNC_MAX_MESSAGES = Math.min(
+  Math.max(Number(process.env.TELEGRAM_SYNC_MAX_MESSAGES || 10000), 500),
+  50000
+);
+const TELEGRAM_RECENT_WINDOW = Math.min(
+  Math.max(Number(process.env.TELEGRAM_RECENT_WINDOW || 300), 50),
+  2000
+);
+const TELEGRAM_NEW_MESSAGE_LIMIT = Math.min(
+  Math.max(Number(process.env.TELEGRAM_NEW_MESSAGE_LIMIT || 1000), 50),
+  5000
+);
+const VIDEO_INDEX_COLLECTION = String(
+  process.env.VIDEO_INDEX_COLLECTION || "telegramVideoIndex"
+).trim();
+
+// Video library metadata is relatively stable. Keep it warm for 5 minutes
+// and refresh it in the background after that instead of making students wait
+// for a Telegram scan on every page open.
+const COURSE_CACHE_TTL_MS = 5 * 60_000;
 
 // Streaming optimization: Telegram MTProto allows up to 1 MiB per upload.getFile
 // request in the standard download path. Larger relay chunks reduce request overhead
@@ -59,6 +76,24 @@ let courseCache = {
   data: null,
   expiresAt: 0,
   promise: null
+};
+
+let videoIndexLoaded = false;
+const videoIndex = new Map();
+
+let syncState = {
+  status: "idle",
+  mode: "none",
+  startedAt: null,
+  completedAt: null,
+  durationMs: 0,
+  scannedMessages: 0,
+  discoveredVideos: 0,
+  newVideos: 0,
+  updatedVideos: 0,
+  totalVideos: 0,
+  highestMessageId: 0,
+  error: null
 };
 
 // ==================================================
@@ -330,6 +365,15 @@ function getDocumentFileName(document) {
   return attribute?.fileName || null;
 }
 
+function getVideoDurationSeconds(document) {
+  const attribute = document.attributes?.find(
+    (item) => item.className === "DocumentAttributeVideo"
+  );
+
+  const duration = Number(attribute?.duration || 0);
+  return Number.isFinite(duration) && duration > 0 ? duration : 0;
+}
+
 function isVideoMessage(message) {
   return Boolean(
     message?.media?.document?.mimeType?.startsWith("video/")
@@ -356,7 +400,9 @@ function toVideoRecord(message) {
         Number(document.size) / (1024 * 1024),
       mimeType: document.mimeType || null,
       fileName: getDocumentFileName(document)
-    }
+    },
+
+    durationSeconds: getVideoDurationSeconds(document)
   };
 }
 
@@ -498,45 +544,270 @@ async function getVideoMessage(messageId) {
 // SCAN TELEGRAM VIDEO MESSAGES
 // ==================================================
 
-async function scanVideoMessages() {
-  const tg = await getClient();
-  const channel = await getChannel();
+async function loadVideoIndexFromFirestore() {
+  if (videoIndexLoaded) return;
 
-  const messageIds = [];
+  videoIndexLoaded = true;
 
-  for (let id = SCAN_FROM; id <= SCAN_TO; id++) {
-    messageIds.push(
-      new Api.InputMessageID({ id })
+  try {
+    getFirebaseAdmin();
+    const snapshot = await getFirestore()
+      .collection(VIDEO_INDEX_COLLECTION)
+      .get();
+
+    videoIndex.clear();
+
+    snapshot.forEach((docSnapshot) => {
+      const data = docSnapshot.data() || {};
+      const messageId = Number(data.messageId || docSnapshot.id);
+      if (!Number.isInteger(messageId) || messageId <= 0) return;
+
+      videoIndex.set(messageId, {
+        messageId,
+        metadata: {
+          course: data.metadata?.course || null,
+          module: data.metadata?.module || null,
+          videoId: data.metadata?.videoId || null,
+          title: data.metadata?.title || null
+        },
+        file: {
+          size: Number(data.file?.size || 0),
+          sizeMB: Number(data.file?.sizeMB || 0),
+          mimeType: data.file?.mimeType || null,
+          fileName: data.file?.fileName || null
+        },
+        durationSeconds: Number(data.durationSeconds || 0),
+        indexedAt: data.indexedAt || null,
+        lastSeenAt: data.lastSeenAt || null
+      });
+    });
+
+    console.log(
+      `Telegram video index loaded from Firestore: ${videoIndex.size} videos.`
+    );
+  } catch (error) {
+    // The video index is an optimization. If Firestore persistence is
+    // temporarily unavailable, keep the in-memory index working instead of
+    // taking the video library down.
+    console.warn(
+      "VIDEO INDEX PERSISTENCE UNAVAILABLE; using memory cache only:",
+      error?.message || error
     );
   }
-
-  console.log(
-    `Scanning Telegram messages ${SCAN_FROM}-${SCAN_TO}...`
-  );
-
-  const result = await tg.invoke(
-    new Api.channels.GetMessages({
-      channel: new Api.InputChannel({
-        channelId: channel.id,
-        accessHash: channel.accessHash
-      }),
-
-      id: messageIds
-    })
-  );
-
-  return (result.messages || [])
-    .filter(isVideoMessage)
-    .map(toVideoRecord);
 }
 
-async function refreshVideoLibrary() {
+function getIndexedVideoArray() {
+  return Array.from(videoIndex.values()).sort(
+    (a, b) => Number(a.messageId) - Number(b.messageId)
+  );
+}
+
+function getVideoRecordSignature(video) {
+  return JSON.stringify({
+    messageId: Number(video.messageId),
+    metadata: video.metadata || {},
+    file: video.file || {},
+    durationSeconds: Number(video.durationSeconds || 0)
+  });
+}
+
+function getMaxIndexedMessageId() {
+  let max = 0;
+  for (const messageId of videoIndex.keys()) {
+    max = Math.max(max, Number(messageId));
+  }
+  return max;
+}
+
+async function persistVideoIndexUpdates(records) {
+  if (!records.length) return;
+
+  try {
+    getFirebaseAdmin();
+    const firestore = getFirestore();
+    const now = new Date().toISOString();
+
+    for (let start = 0; start < records.length; start += 450) {
+      const chunk = records.slice(start, start + 450);
+      const batch = firestore.batch();
+
+      chunk.forEach((record) => {
+        const ref = firestore
+          .collection(VIDEO_INDEX_COLLECTION)
+          .doc(String(record.messageId));
+
+        batch.set(
+          ref,
+          {
+            ...record,
+            indexedAt: record.indexedAt || now,
+            lastSeenAt: now
+          },
+          { merge: true }
+        );
+      });
+
+      await batch.commit();
+    }
+  } catch (error) {
+    console.warn(
+      "VIDEO INDEX WRITE FAILED; continuing with memory index:",
+      error?.message || error
+    );
+  }
+}
+
+async function collectTelegramMessages({ fullScan = false } = {}) {
+  const tg = await getClient();
+  const channel = await getChannel();
+  const messages = new Map();
+
+  const addMessage = (message) => {
+    const id = Number(message?.id || 0);
+    if (id > 0) messages.set(id, message);
+  };
+
+  if (fullScan || videoIndex.size === 0) {
+    console.log(
+      `Telegram full sync started. Maximum messages: ${TELEGRAM_SYNC_MAX_MESSAGES}`
+    );
+
+    for await (const message of tg.iterMessages(channel, {
+      limit: TELEGRAM_SYNC_MAX_MESSAGES
+    })) {
+      addMessage(message);
+    }
+  } else {
+    // Always rescan a recent window. This catches edited captions and videos
+    // that were posted without complete metadata, while minId picks up the
+    // genuinely new tail of the channel history.
+    for await (const message of tg.iterMessages(channel, {
+      limit: TELEGRAM_RECENT_WINDOW
+    })) {
+      addMessage(message);
+    }
+
+    const highestMessageId = getMaxIndexedMessageId();
+
+    if (highestMessageId > 0) {
+      let discoveredNewMessages = 0;
+
+      for await (const message of tg.iterMessages(channel, {
+        minId: highestMessageId,
+        limit: TELEGRAM_NEW_MESSAGE_LIMIT,
+        reverse: true
+      })) {
+        addMessage(message);
+        discoveredNewMessages += 1;
+        if (discoveredNewMessages >= TELEGRAM_NEW_MESSAGE_LIMIT) break;
+      }
+    }
+  }
+
+  return Array.from(messages.values()).sort(
+    (a, b) => Number(a.id) - Number(b.id)
+  );
+}
+
+function normalizeVideoRecord(video) {
+  return {
+    messageId: Number(video.messageId),
+    metadata: {
+      course: video.metadata?.course || null,
+      module: video.metadata?.module || null,
+      videoId: video.metadata?.videoId || null,
+      title: video.metadata?.title || null
+    },
+    file: {
+      size: Number(video.file?.size || 0),
+      sizeMB: Number(video.file?.sizeMB || 0),
+      mimeType: video.file?.mimeType || null,
+      fileName: video.file?.fileName || null
+    },
+    durationSeconds: Number(video.durationSeconds || 0)
+  };
+}
+
+async function syncTelegramVideoIndex({ fullScan = false } = {}) {
   if (courseCache.promise) {
     return courseCache.promise;
   }
 
-  courseCache.promise = scanVideoMessages()
-    .then((videos) => {
+  courseCache.promise = (async () => {
+    const startedAt = Date.now();
+    const mode = fullScan || videoIndex.size === 0 ? "full" : "incremental";
+
+    syncState = {
+      ...syncState,
+      status: "syncing",
+      mode,
+      startedAt: new Date(startedAt).toISOString(),
+      completedAt: null,
+      durationMs: 0,
+      scannedMessages: 0,
+      discoveredVideos: 0,
+      newVideos: 0,
+      updatedVideos: 0,
+      totalVideos: videoIndex.size,
+      highestMessageId: getMaxIndexedMessageId(),
+      error: null
+    };
+
+    try {
+      await loadVideoIndexFromFirestore();
+
+      const messages = await collectTelegramMessages({ fullScan });
+      const discoveredVideos = messages
+        .filter(isVideoMessage)
+        .map((message) => normalizeVideoRecord(toVideoRecord(message)));
+
+      const changedRecords = [];
+      let newVideos = 0;
+      let updatedVideos = 0;
+
+      for (const record of discoveredVideos) {
+        const previous = videoIndex.get(record.messageId);
+        if (!previous) {
+          newVideos += 1;
+          changedRecords.push(record);
+        } else if (
+          getVideoRecordSignature(previous) !==
+          getVideoRecordSignature(record)
+        ) {
+          updatedVideos += 1;
+          changedRecords.push(record);
+        }
+
+        videoIndex.set(record.messageId, {
+          ...(previous || {}),
+          ...record,
+          lastSeenAt: new Date().toISOString()
+        });
+      }
+
+      await persistVideoIndexUpdates(changedRecords);
+
+      const videos = getIndexedVideoArray();
+      const durationMs = Date.now() - startedAt;
+      const highestMessageId = Math.max(
+        getMaxIndexedMessageId(),
+        ...messages.map((message) => Number(message.id) || 0)
+      );
+
+      syncState = {
+        ...syncState,
+        status: "ready",
+        completedAt: new Date().toISOString(),
+        durationMs,
+        scannedMessages: messages.length,
+        discoveredVideos: discoveredVideos.length,
+        newVideos,
+        updatedVideos,
+        totalVideos: videos.length,
+        highestMessageId,
+        error: null
+      };
+
       courseCache = {
         data: videos,
         expiresAt: Date.now() + COURSE_CACHE_TTL_MS,
@@ -544,45 +815,54 @@ async function refreshVideoLibrary() {
       };
 
       console.log(
-        `Video library cache refreshed: ${videos.length} videos; valid for ${COURSE_CACHE_TTL_MS / 1000}s`
+        `Telegram sync complete: ${videos.length} indexed videos; ${newVideos} new; ${updatedVideos} updated; ${messages.length} messages scanned in ${durationMs}ms.`
       );
 
       return videos;
-    })
-    .catch((error) => {
+    } catch (error) {
+      const durationMs = Date.now() - startedAt;
+
+      syncState = {
+        ...syncState,
+        status: "error",
+        completedAt: new Date().toISOString(),
+        durationMs,
+        totalVideos: videoIndex.size,
+        highestMessageId: getMaxIndexedMessageId(),
+        error: error?.message || "Telegram sync failed."
+      };
+
       courseCache.promise = null;
-      console.error("VIDEO LIBRARY CACHE REFRESH ERROR:", error);
+      console.error("TELEGRAM VIDEO INDEX SYNC ERROR:", error);
       throw error;
-    });
+    }
+  })();
 
   return courseCache.promise;
 }
 
-async function getCachedVideoLibrary(force = false) {
+async function getCachedVideoLibrary(force = false, fullScan = false) {
+  await loadVideoIndexFromFirestore();
+
+  if (!courseCache.data && videoIndex.size > 0) {
+    courseCache.data = getIndexedVideoArray();
+    courseCache.expiresAt = Date.now();
+  }
+
   const now = Date.now();
 
-  // Fresh cache: return immediately.
-  if (
-    !force &&
-    courseCache.data &&
-    now < courseCache.expiresAt
-  ) {
+  if (!force && courseCache.data && now < courseCache.expiresAt) {
     return courseCache.data;
   }
 
-  // Stale cache: return immediately and refresh in the background.
-  // This prevents a Telegram scan from blocking the course page.
-  if (
-    !force &&
-    courseCache.data &&
-    now >= courseCache.expiresAt
-  ) {
-    void refreshVideoLibrary().catch(() => {});
+  if (!force && courseCache.data && now >= courseCache.expiresAt) {
+    void syncTelegramVideoIndex({ fullScan: false }).catch(() => {});
     return courseCache.data;
   }
 
-  // First load or explicit refresh: one shared scan only.
-  return refreshVideoLibrary();
+  return syncTelegramVideoIndex({
+    fullScan: Boolean(fullScan)
+  });
 }
 
 async function findLatestVideoMessage() {
@@ -604,6 +884,19 @@ async function findLatestVideoMessage() {
 
 function buildCourseCatalogue(videos) {
   const validVideos = videos.filter(hasCompleteMetadata);
+  const unmappedVideos = videos
+    .filter((video) => !hasCompleteMetadata(video))
+    .map((video) => ({
+      ...video,
+      metadataComplete: false,
+      missingMetadata: [
+        ["course", video.metadata?.course],
+        ["module", video.metadata?.module],
+        ["videoId", video.metadata?.videoId],
+        ["title", video.metadata?.title]
+      ].filter(([, value]) => !value).map(([key]) => key)
+    }))
+    .sort((a, b) => Number(b.messageId) - Number(a.messageId));
   const courseMap = new Map();
 
   for (const video of validVideos) {
@@ -632,6 +925,7 @@ function buildCourseCatalogue(videos) {
       messageId: video.messageId,
       videoId: video.metadata.videoId,
       title: video.metadata.title,
+      durationSeconds: Number(video.durationSeconds || 0),
       file: {
         size: video.file.size,
         sizeMB: video.file.sizeMB,
@@ -675,8 +969,14 @@ function buildCourseCatalogue(videos) {
 
   return {
     courseCount: courses.length,
-    videoCount: validVideos.length,
-    courses
+    // videoCount intentionally includes ALL Telegram video messages, even
+    // when a caption is missing. Unmapped videos are returned separately so
+    // the admin can publish them without having to re-upload the file.
+    videoCount: videos.length,
+    mappedVideoCount: validVideos.length,
+    unmappedVideoCount: unmappedVideos.length,
+    courses,
+    unmappedVideos
   };
 }
 
@@ -1042,13 +1342,23 @@ app.get("/library", async (req, res) => {
     const videos = await getCachedVideoLibrary(force);
 
     const filteredVideos = videos
-      .filter(hasCompleteMetadata)
+      .map((video) => ({
+        ...video,
+        metadataComplete: hasCompleteMetadata(video),
+        missingMetadata: [
+          ["course", video.metadata?.course],
+          ["module", video.metadata?.module],
+          ["videoId", video.metadata?.videoId],
+          ["title", video.metadata?.title]
+        ].filter(([, value]) => !value).map(([key]) => key)
+      }))
       .sort((a, b) => a.messageId - b.messageId);
 
     res.json({
       success: true,
       count: filteredVideos.length,
-      videos: filteredVideos
+      videos: filteredVideos,
+      sync: syncState
     });
   } catch (error) {
     console.error("LIBRARY ERROR:", error);
@@ -1061,13 +1371,56 @@ app.get("/library", async (req, res) => {
 });
 
 // ==================================================
+// TELEGRAM SYNC STATUS / MANUAL SYNC
+// ==================================================
+
+app.get("/sync-status", async (req, res) => {
+  try {
+    await loadVideoIndexFromFirestore();
+    res.json({
+      success: true,
+      sync: syncState,
+      indexedVideoCount: videoIndex.size,
+      cacheReady: Boolean(courseCache.data),
+      cacheExpiresAt: courseCache.expiresAt || null
+    });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({
+      success: false,
+      error: error.message || "Could not load sync status."
+    });
+  }
+});
+
+app.get("/sync", async (req, res) => {
+  try {
+    const fullScan = parseBoolean(req.query.full, false);
+    await getCachedVideoLibrary(true, fullScan);
+
+    res.json({
+      success: true,
+      sync: syncState,
+      indexedVideoCount: videoIndex.size
+    });
+  } catch (error) {
+    console.error("SYNC ERROR:", error);
+    res.status(error.statusCode || 500).json({
+      success: false,
+      error: error.message || "Telegram sync failed.",
+      sync: syncState
+    });
+  }
+});
+
+// ==================================================
 // COURSE → MODULE → VIDEOS
 // ==================================================
 
 app.get("/courses", async (req, res) => {
   try {
     const force = parseBoolean(req.query.refresh, false);
-    const videos = await getCachedVideoLibrary(force);
+    const fullScan = parseBoolean(req.query.full, false);
+    const videos = await getCachedVideoLibrary(force, fullScan);
     const catalogue = buildCourseCatalogue(videos);
 
     res.json({
@@ -1075,7 +1428,8 @@ app.get("/courses", async (req, res) => {
       ...catalogue,
       cachedForMs: COURSE_CACHE_TTL_MS,
       cacheExpiresAt: courseCache.expiresAt || null,
-      cacheReady: Boolean(courseCache.data)
+      cacheReady: Boolean(courseCache.data),
+      sync: syncState
     });
   } catch (error) {
     console.error("COURSES ERROR:", error);
