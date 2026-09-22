@@ -7,8 +7,10 @@ import {
   ArrowUpRight,
   BookOpen,
   CheckCircle2,
+  ChevronRight,
   Clock3,
   FileText,
+  Folder,
   Send,
   ShieldCheck,
   X
@@ -21,8 +23,17 @@ import { loadCatalogueCourses, getCourseFromList } from "../lib/catalogue";
 
 function CourseArtwork({ course }) {
   return (
-    <div className={`course-cover detail-cover ${course.tone}`}>
-      {course.thumbnailUrl ? <img className="cover-thumbnail" src={course.thumbnailUrl} alt="" loading="eager" fetchPriority="high" decoding="async" /> : null}
+    <div className={`course-cover detail-cover detail-cover-v3 ${course.tone}`}>
+      {course.thumbnailUrl ? (
+        <img
+          className="cover-thumbnail"
+          src={course.thumbnailUrl}
+          alt=""
+          loading="eager"
+          fetchPriority="high"
+          decoding="async"
+        />
+      ) : null}
       <div className="cover-grid" />
       <div className="cover-orb orb-one" />
       <div className="cover-orb orb-two" />
@@ -144,50 +155,78 @@ export default function CourseDetailsClient({ course: initialCourse, courseId })
     }
   }
 
-  function handleStudy() {
+  function openLessons() {
     if (!isActive) return;
     const player = document.getElementById("course-video-player");
     if (player) {
       player.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
-    setMessage(course.videoEnabled ? "Video player is loading. Scroll down to Video Lessons." : "Video lessons are not connected to this course yet.");
+    setMessage(
+      course.videoEnabled
+        ? "Video player is loading. Scroll down to Video Lessons."
+        : "Video lessons are not connected to this course yet."
+    );
   }
 
   return (
-    <main className="reference-shell detail-shell-new">
-      <header className="site-header detail-site-header">
-        <Link href="/" className="back-home"><ArrowLeft size={19} /> Back</Link>
+    <main className="reference-shell detail-shell-v3">
+      <header className="site-header detail-site-header detail-site-header-v3">
         <Link href="/" className="brand-lockup" aria-label="Sayeed Courses Hub home">
           <span className="brand-logo"><img src="/shahid-logo.png" alt="Shahid" /></span>
-          <span className="brand-text"><strong>Sayeed Courses Hub</strong><small>Your Next Skills Start Here</small></span>
+          <span className="brand-text">
+            <strong>Sayeed Courses Hub</strong>
+            <small>Your Next Skills Start Here</small>
+          </span>
         </Link>
-        <Link href="/enrolled" className="back-home"><span className="back-desktop-label">My Courses</span> <ArrowUpRight size={19} /></Link>
+        <div className="detail-header-actions-v3">
+          <Link href="/" className="header-pill detail-header-back-v3">
+            <ArrowLeft size={18} /> ALL COURSES
+          </Link>
+          <Link href="/enrolled" className="header-pill detail-header-courses-v3">
+            MY COURSES <ArrowUpRight size={17} />
+          </Link>
+        </div>
       </header>
 
-      <section className="detail-main-card">
+      <div className="detail-breadcrumb-v3">
+        <Link href="/"><ArrowLeft size={17} /> ALL COURSES</Link>
+      </div>
+
+      <section className="detail-main-card-v3">
         <CourseArtwork course={course} />
-        <div className="detail-content-new">
-          <div className="detail-category-row">
+
+        <div className="detail-content-new detail-content-v3">
+          <div className="detail-category-row detail-category-row-v3">
             <span className="category-chip">{course.category}</span>
-            <span>#{course.number}</span>
-            {enrolled && <span className="detail-enrolled-pill"><ShieldCheck size={14} /> IN MY COURSES</span>}
+            <span className="detail-course-number-v3">#{course.number}</span>
+            {enrolled && (
+              <span className="detail-enrolled-pill">
+                <ShieldCheck size={14} /> IN MY COURSES
+              </span>
+            )}
           </div>
+
           <h1>{course.title}</h1>
           <p className="detail-description-new">{course.description}</p>
 
-          <div className="detail-stats-new">
-            <div><BookOpen size={18} /><span>{course.lessons}</span></div>
-            <div><FileText size={18} /><span>{course.resources}</span></div>
-            <div><Clock3 size={18} /><span>{course.duration}</span></div>
+          <div className="detail-stats-new detail-stats-v3">
+            <div><BookOpen size={17} /><span>{course.lessons}</span></div>
+            <div><FileText size={17} /><span>{course.resources}</span></div>
+            <div><Clock3 size={17} /><span>{course.duration}</span></div>
           </div>
 
-          <div className="detail-actions-new">
-            <button type="button" className={`enroll-button ${enrolled ? "is-enrolled" : ""}`} onClick={handleEnroll} disabled={!isActive || busy}>
+          <div className="detail-actions-new detail-actions-v3">
+            <button
+              type="button"
+              className={`enroll-button ${enrolled ? "is-enrolled" : ""}`}
+              onClick={handleEnroll}
+              disabled={!isActive || busy}
+            >
               <span className="action-lock">{enrolled ? "×" : "+"}</span>
               {!isActive ? "COMING SOON" : busy ? "WORKING..." : enrolled ? "UNENROLL" : "ENROLL"}
             </button>
-            <button type="button" className="study-button" onClick={handleStudy} disabled={!isActive}>
+            <button type="button" className="study-button" onClick={openLessons} disabled={!isActive}>
               LET&apos;S STUDY <Send size={18} />
             </button>
           </div>
@@ -196,38 +235,58 @@ export default function CourseDetailsClient({ course: initialCourse, courseId })
         </div>
       </section>
 
-      {course.videoEnabled && (
-        <div id="course-video-player" className="course-video-player-anchor">
-          <VideoPlayer course={course} />
+      <section className="detail-module-section-v3">
+        <div className="detail-section-head-v3">
+          <div>
+            <span className="section-kicker">COURSE CONTENT</span>
+            <h2>Explore the learning path.</h2>
+            <p>Move from one focused section to the next without losing the simple course flow.</p>
+          </div>
+          <span className="detail-section-count-v3">{course.modules.length} SECTIONS</span>
         </div>
-      )}
 
-      <section className="detail-grid-new">
-        <div className="detail-panel-new">
+        <div className="module-list-v3">
+          {course.modules.map((module, index) => (
+            <button type="button" className="module-row-v3" key={module} onClick={openLessons} disabled={!isActive}>
+              <span className="module-folder-v3"><Folder size={27} strokeWidth={1.8} /></span>
+              <span className="module-copy-v3">
+                <small>SECTION {String(index + 1).padStart(2, "0")}</small>
+                <strong>{module}</strong>
+              </span>
+              <span className="module-open-v3">OPEN LESSONS <ChevronRight size={19} /></span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="detail-grid-new detail-grid-v3">
+        <div className="detail-panel-new detail-panel-v3">
           <span className="section-kicker">ABOUT THIS COURSE</span>
           <h2>What you&apos;ll learn</h2>
           <p>{course.overview}</p>
-          <div className="learn-list-new">
+          <div className="learn-list-new learn-list-v3">
             {course.learn.map((item) => (
               <div key={item}><CheckCircle2 size={18} /><span>{item}</span></div>
             ))}
           </div>
         </div>
 
-        <div className="detail-panel-new">
-          <span className="section-kicker">COURSE CONTENT</span>
-          <h2>Modules & lessons</h2>
-          <div className="module-list-new">
-            {course.modules.map((module, index) => (
-              <div className="module-row-new" key={module}>
-                <span>{String(index + 1).padStart(2, "0")}</span>
-                <strong>{module}</strong>
-                <ArrowUpRight size={17} />
-              </div>
-            ))}
+        <div className="detail-panel-new detail-panel-v3 detail-info-v3">
+          <span className="section-kicker">COURSE DETAILS</span>
+          <h2>Built for focused study.</h2>
+          <div className="detail-info-list-v3">
+            <div><span>Instructor</span><strong>{course.instructor}</strong></div>
+            <div><span>Language</span><strong>{course.language}</strong></div>
+            <div><span>Format</span><strong>{course.duration}</strong></div>
           </div>
         </div>
       </section>
+
+      {course.videoEnabled && (
+        <div id="course-video-player" className="course-video-player-anchor course-video-anchor-v3">
+          <VideoPlayer course={course} />
+        </div>
+      )}
 
       <footer className="site-footer">
         <div><strong>SAYEED COURSES</strong><span>Open the learning path. Keep moving.</span></div>
