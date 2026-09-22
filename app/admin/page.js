@@ -46,6 +46,20 @@ function toEditor(course) {
   };
 }
 
+function isUsableThumbnailUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return true;
+  try {
+    const url = new URL(raw);
+    if (!/^https?:$/.test(url.protocol)) return false;
+    const host = url.hostname.toLowerCase();
+    if (host === "ibb.co" || host.endsWith(".ibb.co") || host === "instagram.com" || host.endsWith(".instagram.com") || host === "drive.google.com") return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function cleanForSave(editor) {
   return {
     id: editor.id.trim(),
@@ -84,14 +98,41 @@ function buildImportedLessons(source, courseId) {
         sourceCourse: String(source.course || ""),
         module: String(module.module || "01"),
         messageId: Number(video.messageId),
-        videoId: String(video.videoId || ""),
-        title: String(video.title || "Untitled lesson"),
+        videoId: String(video.videoId || `TG-${video.messageId}`),
+        title: String(video.title || video.file?.fileName || `Telegram Video ${video.messageId}`),
         order: index + 1,
-        published: true
+        published: true,
+        duration: video.durationSeconds ? String(video.durationSeconds) : ""
       });
     });
   });
   return lessons;
+}
+
+function buildImportedLessonFromUnmapped(video, courseId, order = 1) {
+  return {
+    courseId: String(courseId),
+    sourceCourse: String(video.metadata?.course || "TELEGRAM"),
+    module: String(video.metadata?.module || "01"),
+    messageId: Number(video.messageId),
+    videoId: String(video.metadata?.videoId || `TG-${video.messageId}`),
+    title: String(video.metadata?.title || video.file?.fileName || `Telegram Video ${video.messageId}`),
+    order,
+    published: true,
+    duration: video.durationSeconds ? String(video.durationSeconds) : ""
+  };
+}
+
+function formatSyncTime(value) {
+  if (!value) return "Not synced yet";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Not synced yet";
+  return date.toLocaleString([], {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
 }
 
 function VideoManager({ courses, admin }) {
@@ -103,6 +144,8 @@ function VideoManager({ courses, admin }) {
   const [videoBusy, setVideoBusy] = useState(false);
   const [videoMessage, setVideoMessage] = useState("");
   const [videoError, setVideoError] = useState("");
+  const [libraryQuery, setLibraryQuery] = useState("");
+  const [libraryFilter, setLibraryFilter] = useState("all");
 
   const activeCourses = useMemo(
     () => courses.filter((course) => course.status === "active"),
@@ -117,27 +160,49 @@ function VideoManager({ courses, admin }) {
     )?.id || "";
   }
 
-  async function loadTelegramCatalogue(force = false) {
+  async function loadTelegramCatalogue(force = false, fullScan = false) {
     if (!VIDEO_API_URL) {
       setVideoError("Video API is not configured in Vercel.");
       return;
     }
+
     setVideoLoading(true);
     setVideoError("");
+    setVideoMessage(force ? "Syncing Telegram library…" : "Loading cached Telegram library…");
+
     try {
-      const url = `${VIDEO_API_URL}/courses${force ? "?refresh=true" : ""}`;
+      const params = new URLSearchParams();
+      if (force) params.set("refresh", "true");
+      if (fullScan) params.set("full", "true");
+
+      const query = params.toString();
+      const url = `${VIDEO_API_URL}/courses${query ? `?${query}` : ""}`;
       const response = await fetch(url, { cache: "no-store" });
       const payload = await response.json().catch(() => null);
-      if (!response.ok || !payload?.success) throw new Error(payload?.error || "Could not load Telegram videos.");
+
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || "Could not load Telegram videos.");
+      }
+
       setTelegramCatalogue(payload);
+      setVideoMessage(
+        force
+          ? `Sync complete: ${payload.videoCount || 0} Telegram videos found${payload.unmappedVideoCount ? ` · ${payload.unmappedVideoCount} need mapping` : ""}.`
+          : "Telegram library loaded from cache.",
+      );
+
       const defaults = {};
       (payload.courses || []).forEach((source) => {
         defaults[source.course] = sourceTargets[source.course] || guessTarget(source.course);
       });
       setSourceTargets(defaults);
-      if (!selectedTargetId && activeCourses[0]?.id) setSelectedTargetId(String(activeCourses[0].id));
+
+      if (!selectedTargetId && activeCourses[0]?.id) {
+        setSelectedTargetId(String(activeCourses[0].id));
+      }
     } catch (error) {
       setVideoError(error?.message || "Could not load Telegram video catalogue.");
+      setVideoMessage("");
     } finally {
       setVideoLoading(false);
     }
@@ -193,6 +258,37 @@ function VideoManager({ courses, admin }) {
     }
   }
 
+  async function handleImportUnmapped(video) {
+    if (!selectedTargetId) {
+      setVideoError("Choose a website course first, then publish this Telegram video.");
+      return;
+    }
+
+    if (managedLessons.some((lesson) => Number(lesson.messageId) === Number(video.messageId))) {
+      setVideoMessage("This Telegram video is already published in the selected course.");
+      return;
+    }
+
+    setVideoBusy(true);
+    setVideoError("");
+    setVideoMessage("");
+
+    try {
+      const nextOrder = managedLessons.length + 1;
+      const saved = await bulkImportVideoLessons([
+        buildImportedLessonFromUnmapped(video, selectedTargetId, nextOrder)
+      ]);
+      setManagedLessons(await getVideoLessons(selectedTargetId));
+      setVideoMessage(
+        `Published “${saved[0]?.title || "Telegram video"}” to ${activeCourses.find((course) => String(course.id) === String(selectedTargetId))?.title || `Course ${selectedTargetId}`}.`,
+      );
+    } catch (error) {
+      setVideoError(error?.message || "Could not publish this Telegram video.");
+    } finally {
+      setVideoBusy(false);
+    }
+  }
+
   async function handleSaveLesson(lesson) {
     setVideoBusy(true);
     setVideoError("");
@@ -230,9 +326,14 @@ function VideoManager({ courses, admin }) {
           <h2><Video size={21} /> Manage lessons without editing code.</h2>
           <p>Sync videos from the private Telegram channel, map them to a website course, then publish or edit each lesson here.</p>
         </div>
-        <button type="button" className="admin-secondary" onClick={() => loadTelegramCatalogue(true)} disabled={videoLoading || videoBusy}>
-          <RefreshCw size={16} className={videoLoading ? "spin" : ""} /> SYNC TELEGRAM
-        </button>
+        <div className="admin-video-sync-actions">
+          <button type="button" className="admin-secondary" onClick={() => loadTelegramCatalogue(true, false)} disabled={videoLoading || videoBusy}>
+            <RefreshCw size={16} className={videoLoading ? "spin" : ""} /> {videoLoading ? "SYNCING…" : "SYNC TELEGRAM"}
+          </button>
+          <button type="button" className="admin-secondary admin-secondary-muted" onClick={() => loadTelegramCatalogue(true, true)} disabled={videoLoading || videoBusy}>
+            FULL RESCAN
+          </button>
+        </div>
       </div>
 
       {videoMessage && <div className="admin-message success"><Check size={16} /> {videoMessage}</div>}
@@ -246,8 +347,28 @@ function VideoManager({ courses, admin }) {
           </select>
         </label>
         <div className="admin-video-stats">
-          <span>{telegramCatalogue?.videoCount || 0} Telegram videos found</span>
-          <span>{managedLessons.filter((lesson) => lesson.published).length} published here</span>
+          <span>{telegramCatalogue?.videoCount || 0} TOTAL</span>
+          <span>{telegramCatalogue?.mappedVideoCount || 0} MAPPED</span>
+          <span>{telegramCatalogue?.unmappedVideoCount || 0} NEED MAPPING</span>
+          <span>{managedLessons.filter((lesson) => lesson.published).length} PUBLISHED HERE</span>
+        </div>
+      </div>
+
+      <div className="admin-video-library-controls">
+        <label className="admin-video-search">
+          <Search size={15} />
+          <input value={libraryQuery} onChange={(event) => setLibraryQuery(event.target.value)} placeholder="Search course, video or filename…" />
+          {libraryQuery && <button type="button" onClick={() => setLibraryQuery("")} aria-label="Clear video search"><X size={14} /></button>}
+        </label>
+        <select value={libraryFilter} onChange={(event) => setLibraryFilter(event.target.value)} aria-label="Video library filter">
+          <option value="all">All videos</option>
+          <option value="mapped">Mapped only</option>
+          <option value="unmapped">Needs mapping</option>
+        </select>
+        <div className="admin-video-sync-meta">
+          <strong>{telegramCatalogue?.sync?.status === "syncing" ? "Syncing…" : "Ready"}</strong>
+          <span>Last sync: {formatSyncTime(telegramCatalogue?.sync?.completedAt)}</span>
+          {telegramCatalogue?.sync?.durationMs ? <span>{(Number(telegramCatalogue.sync.durationMs) / 1000).toFixed(1)}s</span> : null}
         </div>
       </div>
 
@@ -260,26 +381,70 @@ function VideoManager({ courses, admin }) {
         </div>
       ) : (
         <>
-          <div className="admin-video-source-grid">
-            {(telegramCatalogue.courses || []).map((source) => (
-              <article className="admin-video-source-card" key={source.course}>
-                <div className="admin-video-source-top"><span>{source.course}</span><strong>{source.videoCount} VIDEOS</strong></div>
-                <small>{source.moduleCount} modules</small>
-                <label>Website course
-                  <select
-                    value={sourceTargets[source.course] || ""}
-                    onChange={(event) => setSourceTargets((current) => ({ ...current, [source.course]: event.target.value }))}
-                  >
-                    <option value="">Choose course</option>
-                    {activeCourses.map((course) => <option key={course.id} value={course.id}>#{course.number} — {course.title}</option>)}
-                  </select>
-                </label>
-                <button type="button" className="admin-import-button" onClick={() => handleImport(source)} disabled={videoBusy || !sourceTargets[source.course]}>
-                  <UploadCloud size={15} /> IMPORT & PUBLISH
-                </button>
-              </article>
-            ))}
-          </div>
+          {(libraryFilter !== "unmapped") && (
+            <div className="admin-video-source-grid">
+              {(telegramCatalogue.courses || [])
+                .filter((source) => {
+                  const haystack = `${source.course} ${(source.modules || []).flatMap((module) => (module.videos || []).map((video) => `${video.title || ""} ${video.file?.fileName || ""}`)).join(" ")}`.toLowerCase();
+                  return !libraryQuery.trim() || haystack.includes(libraryQuery.trim().toLowerCase());
+                })
+                .map((source) => (
+                  <article className="admin-video-source-card" key={source.course}>
+                    <div className="admin-video-source-top"><span>{source.course}</span><strong>{source.videoCount} VIDEOS</strong></div>
+                    <small>{source.moduleCount} modules · mapped automatically from Telegram metadata</small>
+                    <label>Website course
+                      <select
+                        value={sourceTargets[source.course] || ""}
+                        onChange={(event) => setSourceTargets((current) => ({ ...current, [source.course]: event.target.value }))}
+                      >
+                        <option value="">Choose course</option>
+                        {activeCourses.map((course) => <option key={course.id} value={course.id}>#{course.number} — {course.title}</option>)}
+                      </select>
+                    </label>
+                    <button type="button" className="admin-import-button" onClick={() => handleImport(source)} disabled={videoBusy || !sourceTargets[source.course]}>
+                      <UploadCloud size={15} /> IMPORT & PUBLISH {source.videoCount} LESSONS
+                    </button>
+                  </article>
+                ))}
+            </div>
+          )}
+
+          {(libraryFilter !== "mapped") && telegramCatalogue.unmappedVideos?.length > 0 && (
+            <div className="admin-unmapped-panel">
+              <div className="admin-form-head">
+                <div><span>UNMAPPED TELEGRAM VIDEOS</span><small>These videos were found successfully but their Telegram caption is missing some metadata. You can publish them directly without re-uploading.</small></div>
+                <strong>{telegramCatalogue.unmappedVideoCount}</strong>
+              </div>
+              <div className="admin-unmapped-list">
+                {telegramCatalogue.unmappedVideos
+                  .filter((video) => {
+                    const published = managedLessons.some((lesson) => Number(lesson.messageId) === Number(video.messageId));
+                    const haystack = `${video.metadata?.title || ""} ${video.file?.fileName || ""} ${video.messageId}`.toLowerCase();
+                    return !published && (!libraryQuery.trim() || haystack.includes(libraryQuery.trim().toLowerCase()));
+                  })
+                  .map((video) => (
+                    <article className="admin-unmapped-row" key={video.messageId}>
+                      <div className="admin-unmapped-main">
+                        <strong>{video.metadata?.title || video.file?.fileName || `Telegram Video ${video.messageId}`}</strong>
+                        <span>Message {video.messageId} · {Number(video.file?.sizeMB || 0).toFixed(1)} MB · Missing: {video.missingMetadata?.join(", ") || "metadata"}</span>
+                      </div>
+                      <button type="button" className="admin-import-button" onClick={() => handleImportUnmapped(video)} disabled={videoBusy || !selectedTargetId}>
+                        <UploadCloud size={15} /> PUBLISH TO SELECTED COURSE
+                      </button>
+                    </article>
+                  ))}
+              </div>
+              {!selectedTargetId && <div className="admin-unmapped-note">Choose a website course above to publish unmapped Telegram videos.</div>}
+            </div>
+          )}
+
+          {libraryFilter === "unmapped" && !telegramCatalogue.unmappedVideos?.length && (
+            <div className="admin-video-empty compact">
+              <Check size={24} />
+              <strong>Everything is mapped.</strong>
+              <span>No Telegram videos are waiting for manual mapping.</span>
+            </div>
+          )}
 
           <div className="admin-published-lessons">
             <div className="admin-form-head"><span>PUBLISHED LESSONS</span><strong>{managedLessons.length}</strong></div>
@@ -391,6 +556,10 @@ export default function AdminPage() {
 
   async function handleSave(event) {
     event.preventDefault();
+    if (!isUsableThumbnailUrl(editor.thumbnailUrl)) {
+      setMessage("Thumbnail link invalid. Use a direct HTTPS image URL such as an i.postimg.cc link.");
+      return;
+    }
     setBusy(true);
     setMessage("");
     setError("");
@@ -539,7 +708,7 @@ export default function AdminPage() {
           {editor.thumbnailUrl ? (
             <div className="admin-thumb-preview">
               <div className="admin-thumb-preview-head"><span><ImageIcon size={14} /> THUMBNAIL PREVIEW</span><a href={editor.thumbnailUrl} target="_blank" rel="noreferrer"><Eye size={14} /> OPEN</a></div>
-              <div className="admin-thumb-frame"><img src={editor.thumbnailUrl} alt="Course thumbnail preview" onError={(event) => { event.currentTarget.style.display = "none"; event.currentTarget.parentElement?.classList.add("is-error"); }} /></div>
+              <div className="admin-thumb-frame"><img src={editor.thumbnailUrl} alt="Course thumbnail preview" onError={(event) => { event.currentTarget.style.display = "none"; event.currentTarget.parentElement?.classList.add("is-error"); }} /><span className="admin-thumb-error-label">Thumbnail preview could not load. Check the direct image URL.</span></div>
             </div>
           ) : null}
           <label>Telegram study URL<input value={editor.telegramUrl} onChange={(e) => setEditor({ ...editor, telegramUrl: e.target.value })} placeholder="https://t.me/..." inputMode="url" /></label>
